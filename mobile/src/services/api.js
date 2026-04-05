@@ -49,7 +49,11 @@ export const tasksAPI = {
   getCaregiverTasks: (userId, date) =>
     api.get(`/tasks/caregiver/${userId}`, { params: date ? { date } : {} }),
   updateStatus: data => api.patch('/tasks/status', data),
+  updateTask: (taskId, data) => api.patch(`/tasks/${taskId}`, data),
+  updateTemplate: (templateId, data) => api.patch(`/tasks/template/${templateId}`, data),
   rateTask: data => api.patch('/tasks/rate', data),
+  deleteTask: taskId => api.delete(`/tasks/${taskId}`),
+  deleteTemplate: templateId => api.delete(`/tasks/template/${templateId}`),
   getRelativeStats: userId => api.get(`/tasks/stats/relative/${userId}`),
   getCaregiverStats: userId => api.get(`/tasks/stats/caregiver/${userId}`),
 };
@@ -66,6 +70,7 @@ export const messagesAPI = {
   send: data => api.post('/messages/', data),
   getConversation: (userA, userB) =>
     api.get(`/messages/conversation/${userA}/${userB}`),
+  getUserConversations: userId => api.get(`/messages/user/${userId}/conversations`),
   markRead: messageId => api.patch(`/messages/read/${messageId}`),
   editMessage: data => api.patch('/messages/edit', data),
   deleteMessage: id => api.delete(`/messages/${id}`),

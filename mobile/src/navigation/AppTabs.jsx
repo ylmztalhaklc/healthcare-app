@@ -7,15 +7,13 @@ import { ROLES } from '../constants/config';
 
 // Relative screens
 import RelativeTasksScreen from '../screens/relative/RelativeTasksScreen';
-import RelativeMessagesScreen from '../screens/relative/RelativeMessagesScreen';
 import RelativeStatsScreen from '../screens/relative/RelativeStatsScreen';
-import RelativeNotificationsScreen from '../screens/relative/RelativeNotificationsScreen';
+import RelativeMessagesScreen from '../screens/relative/RelativeMessagesScreen';
 
 // Caregiver screens
 import CaregiverTasksScreen from '../screens/caregiver/CaregiverTasksScreen';
 import CaregiverMessagesScreen from '../screens/caregiver/CaregiverMessagesScreen';
 import CaregiverStatsScreen from '../screens/caregiver/CaregiverStatsScreen';
-import CaregiverNotificationsScreen from '../screens/caregiver/CaregiverNotificationsScreen';
 
 import TabBarIcon from '../components/common/TabBarIcon';
 
@@ -51,19 +49,14 @@ export default function AppTabs() {
             options={{ title: 'Görevler', tabBarIcon: p => <TabBarIcon name="tasks" {...p} /> }}
           />
           <Tab.Screen
-            name="Messages"
-            component={RelativeMessagesScreen}
-            options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
-          />
-          <Tab.Screen
             name="Stats"
             component={RelativeStatsScreen}
             options={{ title: 'İstatistik', tabBarIcon: p => <TabBarIcon name="stats" {...p} /> }}
           />
           <Tab.Screen
-            name="Notifications"
-            component={RelativeNotificationsScreen}
-            options={{ title: 'Bildirimler', tabBarIcon: p => <TabBarIcon name="notifications" {...p} /> }}
+            name="Messages"
+            component={RelativeMessagesScreen}
+            options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
           />
         </>
       ) : (
@@ -74,19 +67,14 @@ export default function AppTabs() {
             options={{ title: 'Görevler', tabBarIcon: p => <TabBarIcon name="tasks" {...p} /> }}
           />
           <Tab.Screen
-            name="Messages"
-            component={CaregiverMessagesScreen}
-            options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
-          />
-          <Tab.Screen
             name="Stats"
             component={CaregiverStatsScreen}
             options={{ title: 'İstatistik', tabBarIcon: p => <TabBarIcon name="stats" {...p} /> }}
           />
           <Tab.Screen
-            name="Notifications"
-            component={CaregiverNotificationsScreen}
-            options={{ title: 'Bildirimler', tabBarIcon: p => <TabBarIcon name="notifications" {...p} /> }}
+            name="Messages"
+            component={CaregiverMessagesScreen}
+            options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
           />
         </>
       )}

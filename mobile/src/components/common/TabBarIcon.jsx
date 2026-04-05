@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 
 const ICONS = {
+  home:          { focused: '🏠', unfocused: '🏠' },
   tasks:         { focused: '✓', unfocused: '✓' },
   messages:      { focused: '✉', unfocused: '✉' },
   stats:         { focused: '▤', unfocused: '▤' },

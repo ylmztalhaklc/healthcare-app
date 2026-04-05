@@ -3,17 +3,19 @@ export const dark = {
   // Backgrounds
   background: '#0D1117',
   surface: '#161B22',
-  surfaceElevated: '#1C2128',
+  surface2: '#21262D',
+  surface3: '#2D333B',
   card: '#21262D',
 
   // Primary / Accent
   primary: '#4ECDC4',
-  primaryDark: '#3ABDB5',
-  primaryLight: '#7EDDD8',
+  primaryDark: '#3AB5AC',
+  secondary: '#95E1D3',
+  primarySoft: 'rgba(78,205,196,0.15)',
 
   // Status colors
-  success: '#3FB950',
-  warning: '#D29922',
+  success: '#56CFB2',
+  warning: '#FFB347',
   error: '#FF6B6B',
   info: '#58A6FF',
 
@@ -26,66 +28,70 @@ export const dark = {
   textPrimary: '#E6EDF3',
   textSecondary: '#8B949E',
   textMuted: '#6E7681',
+  textTertiary: '#484F58',
   textInverse: '#0D1117',
 
   // Borders / Dividers
-  border: '#30363D',
+  border: 'rgba(255,255,255,0.08)',
   divider: '#21262D',
 
   // Task status
-  statusPending: '#D29922',
+  statusPending: '#FFB347',
   statusActive: '#58A6FF',
-  statusDone: '#3FB950',
+  statusDone: '#56CFB2',
   statusProblem: '#FF6B6B',
 
   // Severity
-  severityLow: '#3FB950',
-  severityMedium: '#D29922',
+  severityLow: '#56CFB2',
+  severityMedium: '#FFB347',
   severityHigh: '#FF6B6B',
 };
 
 // ─── LIGHT THEME COLORS ───────────────────────────────────────
 export const light = {
   // Backgrounds
-  background: '#F6F8FA',
+  background: '#F0F4F8',
   surface: '#FFFFFF',
-  surfaceElevated: '#FFFFFF',
-  card: '#F0F2F5',
+  surface2: '#F8F9FD',
+  surface3: '#EDF2F7',
+  card: '#FFFFFF',
 
   // Primary / Accent
-  primary: '#2AAFB0',
-  primaryDark: '#1E8C8D',
-  primaryLight: '#4ECDC4',
+  primary: '#4ECDC4',
+  primaryDark: '#3AB5AC',
+  secondary: '#95E1D3',
+  primarySoft: 'rgba(78,205,196,0.15)',
 
   // Status colors
-  success: '#1A7F37',
-  warning: '#9A6700',
-  error: '#CF222E',
-  info: '#0969DA',
+  success: '#56CFB2',
+  warning: '#FFB347',
+  error: '#FF6B6B',
+  info: '#58A6FF',
 
   // Medication / Special
-  medication: '#BF4B8C',
-  maleBlue: '#0969DA',
-  femalePink: '#BF4B8C',
+  medication: '#FF6B9D',
+  maleBlue: '#4A9EFF',
+  femalePink: '#FF6B9D',
 
   // Text
-  textPrimary: '#1C2128',
-  textSecondary: '#57606A',
-  textMuted: '#8C959F',
+  textPrimary: '#2C3E50',
+  textSecondary: '#657786',
+  textMuted: '#8A959E',
+  textTertiary: '#A0AEC0',
   textInverse: '#FFFFFF',
 
   // Borders / Dividers
-  border: '#D0D7DE',
+  border: 'rgba(0,0,0,0.07)',
   divider: '#EAEEF2',
 
   // Task status
-  statusPending: '#9A6700',
-  statusActive: '#0969DA',
-  statusDone: '#1A7F37',
-  statusProblem: '#CF222E',
+  statusPending: '#FFB347',
+  statusActive: '#58A6FF',
+  statusDone: '#56CFB2',
+  statusProblem: '#FF6B6B',
 
   // Severity
-  severityLow: '#1A7F37',
-  severityMedium: '#9A6700',
-  severityHigh: '#CF222E',
+  severityLow: '#56CFB2',
+  severityMedium: '#FFB347',
+  severityHigh: '#FF6B6B',
 };

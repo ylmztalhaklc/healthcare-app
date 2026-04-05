@@ -15,9 +15,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:8081", "http://localhost:8082", "http://localhost:19006", "http://localhost:19000"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -25,6 +25,20 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     create_tables()
+    # Column migrations for new fields
+    from sqlalchemy import text
+    from database import engine
+    migrations = [
+        "ALTER TABLE notifications ADD COLUMN title TEXT",
+        "ALTER TABLE notifications ADD COLUMN related_user_name TEXT",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass
 
 
 app.include_router(auth.router)

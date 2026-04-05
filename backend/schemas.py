@@ -55,6 +55,7 @@ class TaskInstanceCreate(BaseModel):
     description: Optional[str] = None
     scheduled_for: datetime
     assigned_to_id: Optional[int] = None
+    created_by_id: int
 
 class TaskStatusUpdate(BaseModel):
     task_id: int
@@ -71,6 +72,7 @@ class TaskRating(BaseModel):
 
 class TaskInstanceOut(BaseModel):
     id: int
+    template_id: Optional[int]
     title: str
     description: Optional[str]
     scheduled_for: datetime
@@ -94,12 +96,20 @@ class TaskInstanceOut(BaseModel):
 class NotificationOut(BaseModel):
     id: int
     user_id: int
+    title: Optional[str] = "Bildirim"
     message: str
+    related_user_name: Optional[str] = None
     is_read: bool
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    scheduled_for: Optional[datetime] = None
 
 
 # ─── MESSAGE ──────────────────────────────────────────────────

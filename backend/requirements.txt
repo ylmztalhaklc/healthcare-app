@@ -4,6 +4,7 @@ sqlalchemy==2.0.36
 pydantic==2.10.5
 python-multipart
 aiofiles
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 python-jose[cryptography]
 python-dotenv
