@@ -2,6 +2,8 @@
 
 React Native ile geliştirilmiş mobil sağlık yönetim uygulaması.
 
+Haftalık güncelleme videolarının bulunduğu drive linki: https://drive.google.com/drive/folders/1BK14QEyJioN4YmG0g28vr3ZP2dDAWeVA?usp=sharing
+
 ---
 
 ## Proje Hakkında
