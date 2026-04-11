@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Alert,
   ActivityIndicator,
@@ -13,6 +12,8 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -229,14 +230,14 @@ export default function LoginScreen({ navigation }) {
           {/* Hero Section */}
           <View style={s.hero}>
             <TouchableOpacity style={s.themeToggleBtn} onPress={toggleTheme}>
-              <Text style={s.themeEmoji}>{isDark ? '☀️' : '🌙'}</Text>
+              <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FBBF24' : '#60A5FA'} />
             </TouchableOpacity>
             <View style={s.heroContent}>
               <View style={s.logo}>
                 <Text style={s.logoIcon}>+</Text>
               </View>
               <Text style={s.logoText}>HealthCare RN</Text>
-              <Text style={s.logoSub}>Hasta Bakim Yonetim Sistemi</Text>
+              <Text style={s.logoSub}>Hasta Bakım Yönetim Sistemi</Text>
             </View>
           </View>
 
@@ -275,9 +276,7 @@ export default function LoginScreen({ navigation }) {
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity style={s.passwordToggle} onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={{ fontSize: 18, color: colors.textSecondary }}>
-                    {showPassword ? '●' : '○'}
-                  </Text>
+                  <Ionicons name={showPassword ? 'eye' : 'eye-off'} size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>

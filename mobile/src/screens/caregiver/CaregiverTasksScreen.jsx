@@ -1,11 +1,40 @@
 ﻿import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Modal } from 'react-native';
+import {
+  View, Text, FlatList, StyleSheet, ActivityIndicator, Alert,
+  TouchableOpacity, Modal, TextInput, Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { tasksAPI } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { tasksAPI, notificationsAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
 const DAYS_TR = ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'];
+
+function getStatusColor(status, colors) {
+  switch (status) {
+    case 'tamamlandi': return colors.success;
+    case 'sorun_var': return colors.error;
+    case 'devam_ediyor': return '#FB923C';
+    default: return '#FBBF24';
+  }
+}
+function getChipBg(status) {
+  switch (status) {
+    case 'tamamlandi': return 'rgba(52,211,153,0.15)';
+    case 'sorun_var': return 'rgba(248,113,113,0.15)';
+    case 'devam_ediyor': return 'rgba(251,146,60,0.15)';
+    default: return 'rgba(251,191,36,0.15)';
+  }
+}
+function getStatusLabel(status) {
+  switch (status) {
+    case 'tamamlandi': return 'Tamamlandi';
+    case 'sorun_var': return 'Sorun Var';
+    case 'devam_ediyor': return 'Devam Ediyor';
+    default: return 'Bekliyor';
+  }
+}
 
 export default function CaregiverTasksScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -15,6 +44,18 @@ export default function CaregiverTasksScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekDates, setWeekDates] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const [showProblemModal, setShowProblemModal] = useState(false);
+  const [problemTaskId, setProblemTaskId] = useState(null);
+  const [problemText, setProblemText] = useState('');
+  const [problemPhoto, setProblemPhoto] = useState(null);
+  const [problemLoading, setProblemLoading] = useState(false);
+
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [completeTaskId, setCompleteTaskId] = useState(null);
+  const [completePhoto, setCompletePhoto] = useState(null);
+  const [completeLoading, setCompleteLoading] = useState(false);
 
   useEffect(() => {
     const today = new Date();
@@ -28,22 +69,34 @@ export default function CaregiverTasksScreen({ navigation }) {
     setWeekDates(dates);
   }, []);
 
-  useEffect(() => {
-    fetchTasks();
-  }, [selectedDate]);
+  useEffect(() => { fetchTasks(); }, [selectedDate]);
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
       const res = await tasksAPI.getCaregiverTasks(user?.id, dateStr);
-      setTasks(res.data);
+      setTasks(Array.isArray(res.data) ? res.data : []);
     } catch {
       Alert.alert('Hata', 'Gorevler yuklenirken hata olustu.');
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await notificationsAPI.getAll(user?.id);
+      const arr = Array.isArray(res.data) ? res.data : [];
+      setUnreadCount(arr.filter(n => !n.is_read).length);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -54,8 +107,50 @@ export default function CaregiverTasksScreen({ navigation }) {
     }
   };
 
-  const isDateSelected = (date) => date.toDateString() === selectedDate.toDateString();
+  const openProblemModal = (taskId) => {
+    setProblemTaskId(taskId);
+    setProblemText('');
+    setProblemPhoto(null);
+    setShowProblemModal(true);
+  };
 
+  const submitProblem = async () => {
+    if (!problemText.trim()) {
+      Alert.alert('Hata', 'Lutfen sorun aciklamasi yazin.');
+      return;
+    }
+    setProblemLoading(true);
+    try {
+      await tasksAPI.updateStatus({ task_id: problemTaskId, user_id: user?.id, status: 'sorun_var' });
+      setShowProblemModal(false);
+      fetchTasks();
+    } catch {
+      Alert.alert('Hata', 'Sorun bildirilemedi.');
+    } finally {
+      setProblemLoading(false);
+    }
+  };
+
+  const openCompleteModal = (taskId) => {
+    setCompleteTaskId(taskId);
+    setCompletePhoto(null);
+    setShowCompleteModal(true);
+  };
+
+  const submitComplete = async () => {
+    setCompleteLoading(true);
+    try {
+      await tasksAPI.updateStatus({ task_id: completeTaskId, user_id: user?.id, status: 'tamamlandi' });
+      setShowCompleteModal(false);
+      fetchTasks();
+    } catch {
+      Alert.alert('Hata', 'Gorev tamamlanamadi.');
+    } finally {
+      setCompleteLoading(false);
+    }
+  };
+
+  const isDateSelected = (date) => date.toDateString() === selectedDate.toDateString();
   const completedCount = tasks.filter(t => t.status === 'tamamlandi').length;
   const percentage = tasks.length > 0 ? Math.round(completedCount / tasks.length * 100) : 0;
 
@@ -65,20 +160,11 @@ export default function CaregiverTasksScreen({ navigation }) {
   };
 
   const renderTask = ({ item }) => {
-    const barColor = item.status === 'tamamlandi' ? colors.success
-      : item.status === 'sorun_var' ? colors.error
-      : item.status === 'devam_ediyor' ? colors.primary
-      : colors.warning;
-    const chipBg = item.status === 'tamamlandi' ? 'rgba(86,207,178,0.15)'
-      : item.status === 'sorun_var' ? 'rgba(255,107,107,0.15)'
-      : item.status === 'devam_ediyor' ? 'rgba(78,205,196,0.15)'
-      : 'rgba(255,179,71,0.15)';
-    const statusLabel = item.status === 'tamamlandi' ? 'Tamamlandı'
-      : item.status === 'sorun_var' ? 'Sorun Var'
-      : item.status === 'devam_ediyor' ? 'Devam Ediyor'
-      : 'Bekliyor';
+    const barColor = getStatusColor(item.status, colors);
+    const chipBg = getChipBg(item.status);
+    const statusLabel = getStatusLabel(item.status);
     const timeStr = item.scheduled_for
-      ? new Date(item.scheduled_for).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      ? new Date(item.scheduled_for).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
       : '';
     return (
       <View style={[s.taskCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -91,28 +177,36 @@ export default function CaregiverTasksScreen({ navigation }) {
             </View>
           </View>
           {item.description ? <Text style={[s.taskDesc, { color: colors.textSecondary }]}>{item.description}</Text> : null}
-          {timeStr ? <Text style={[s.taskMeta, { color: colors.textSecondary }]}>{timeStr}</Text> : null}
+          {timeStr ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <Ionicons name="time-outline" size={12} color={colors.textMuted} />
+              <Text style={[s.taskMeta, { color: colors.textSecondary }]}>{timeStr}</Text>
+            </View>
+          ) : null}
           {item.status !== 'tamamlandi' && (
-            <View style={{ flexDirection: 'row', marginTop: 12, gap: 8 }}>
+            <View style={{ flexDirection: 'row', marginTop: 12, gap: 6 }}>
               {item.status === 'bekliyor' && (
                 <TouchableOpacity
-                  style={[s.actionBtn, { backgroundColor: colors.primarySoft, borderColor: 'rgba(78,205,196,0.3)', flex: 1 }]}
+                  style={[s.actionBtn, { backgroundColor: colors.primarySoft, borderColor: 'rgba(56,189,248,0.3)', flex: 1 }]}
                   onPress={() => updateTaskStatus(item.id, 'devam_ediyor')}
                 >
-                  <Text style={[s.actionBtnText, { color: colors.primary }]}>Baslat</Text>
+                  <Ionicons name="play-circle-outline" size={13} color={colors.primary} />
+                  <Text style={[s.actionBtnText, { color: colors.primary }]}>Baslatildi</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                style={[s.actionBtn, { backgroundColor: 'rgba(255,107,107,0.12)', borderColor: 'rgba(255,107,107,0.3)', flex: 1 }]}
-                onPress={() => updateTaskStatus(item.id, 'sorun_var')}
+                style={[s.actionBtn, { backgroundColor: 'rgba(248,113,113,0.12)', borderColor: 'rgba(248,113,113,0.3)', flex: 1 }]}
+                onPress={() => openProblemModal(item.id)}
               >
+                <Ionicons name="warning-outline" size={13} color={colors.error} />
                 <Text style={[s.actionBtnText, { color: colors.error }]}>Sorun Bildir</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.actionBtn, { backgroundColor: 'rgba(86,207,178,0.12)', borderColor: 'rgba(86,207,178,0.3)', flex: 1 }]}
-                onPress={() => updateTaskStatus(item.id, 'tamamlandi')}
+                style={[s.actionBtn, { backgroundColor: 'rgba(52,211,153,0.12)', borderColor: 'rgba(52,211,153,0.3)', flex: 1 }]}
+                onPress={() => openCompleteModal(item.id)}
               >
-                <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamla</Text>
+                <Ionicons name="checkmark-circle-outline" size={13} color={colors.success} />
+                <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamlandi</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -123,18 +217,22 @@ export default function CaregiverTasksScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
       <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>Merhaba,</Text>
-          <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Hekim'}</Text>
+          <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Bakici'}</Text>
         </View>
         <View style={s.headerRight}>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
-            <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => { fetchUnreadCount(); navigation.navigate('Notifications'); }}>
+            <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
+            {unreadCount > 0 && (
+              <View style={s.badge}>
+                <Text style={s.badgeTxt}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials()}</Text>
@@ -142,18 +240,16 @@ export default function CaregiverTasksScreen({ navigation }) {
         </View>
       </View>
 
-      {/* User Menu */}
       <Modal transparent animationType="fade" visible={showUserMenu} onRequestClose={() => setShowUserMenu(false)}>
         <TouchableOpacity style={s.menuOverlay} onPress={() => setShowUserMenu(false)} activeOpacity={1}>
           <View style={[s.userMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity style={s.menuItem} onPress={() => { setShowUserMenu(false); logout(); }}>
-              <Text style={{ fontSize: 13, color: colors.error }}>Çıkış Yap</Text>
+              <Text style={{ fontSize: 13, color: colors.error }}>Cikis Yap</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
-      {/* Calendar */}
       <View style={[s.calendarWrap, { backgroundColor: colors.background }]}>
         <Text style={[s.calMonth, { color: colors.textPrimary }]}>
           {selectedDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
@@ -182,12 +278,11 @@ export default function CaregiverTasksScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Progress Banner */}
       {tasks.length > 0 && !loading && (
         <View style={[s.progBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.progTop}>
             <View>
-              <Text style={[s.progLabel, { color: colors.textSecondary }]}>Tamamlanan Görevler</Text>
+              <Text style={[s.progLabel, { color: colors.textSecondary }]}>Tamamlanan Gorevler</Text>
               <Text style={[s.progValue, { color: colors.primary }]}>
                 {completedCount}
                 <Text style={[s.progTotal, { color: colors.textSecondary }]}>/{tasks.length}</Text>
@@ -201,7 +296,6 @@ export default function CaregiverTasksScreen({ navigation }) {
         </View>
       )}
 
-      {/* Task List */}
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 32 }} />
       ) : (
@@ -212,12 +306,96 @@ export default function CaregiverTasksScreen({ navigation }) {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
           ListEmptyComponent={
             <View style={s.emptyWrap}>
-              <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
-              <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bu tarihte görev bulunmuyor.</Text>
+              <Ionicons name="clipboard-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
+              <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bu tarihte gorev bulunmuyor.</Text>
             </View>
           }
         />
       )}
+
+      <Modal transparent animationType="fade" visible={showProblemModal} onRequestClose={() => setShowProblemModal(false)}>
+        <View style={s.centeredOverlay}>
+          <View style={[s.centeredModal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Ionicons name="warning" size={20} color={colors.error} />
+              <Text style={[s.popupTitle, { color: colors.error }]}>Sorun Bildir</Text>
+            </View>
+            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>SORUN ACIKLAMASI *</Text>
+            <TextInput
+              style={[s.popupInput, { backgroundColor: colors.surface2, borderColor: colors.border, color: colors.textPrimary }]}
+              placeholder="Sorunu kisaca aciklayin..."
+              placeholderTextColor={colors.textMuted}
+              value={problemText}
+              onChangeText={setProblemText}
+              multiline
+              numberOfLines={4}
+            />
+            <Text style={[s.popupLabel, { color: colors.textSecondary, marginTop: 10 }]}>FOTOGRAF (ISTEGE BAGLI)</Text>
+            <TouchableOpacity
+              style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: problemPhoto ? colors.error : colors.border }]}
+              onPress={() => Alert.alert('Bilgi', 'Fotograf yukleme backend entegrasyonu yakin zamanda eklenecek.')}
+            >
+              <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotograf Ekle</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[s.popupBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
+                onPress={() => setShowProblemModal(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Iptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.popupBtn, { backgroundColor: colors.error, opacity: problemLoading ? 0.7 : 1 }]}
+                onPress={submitProblem}
+                disabled={problemLoading}
+              >
+                {problemLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Gonder</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal transparent animationType="fade" visible={showCompleteModal} onRequestClose={() => setShowCompleteModal(false)}>
+        <View style={s.centeredOverlay}>
+          <View style={[s.centeredModal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              <Text style={[s.popupTitle, { color: colors.success }]}>Gorevi Tamamla</Text>
+            </View>
+            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>FOTOGRAF (ISTEGE BAGLI)</Text>
+            <TouchableOpacity
+              style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: completePhoto ? colors.success : colors.border }]}
+              onPress={() => Alert.alert('Bilgi', 'Fotograf yukleme backend entegrasyonu yakin zamanda eklenecek.')}
+            >
+              <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Kanit Fotografi Ekle</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={[s.popupBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
+                onPress={() => setShowCompleteModal(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Iptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.popupBtn, { backgroundColor: colors.success, opacity: completeLoading ? 0.7 : 1 }]}
+                onPress={submitComplete}
+                disabled={completeLoading}
+              >
+                {completeLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Tamamlandi</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -229,6 +407,8 @@ const s = StyleSheet.create({
   headerName: { fontSize: 16, fontWeight: '700' },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  badgeTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
   menuOverlay: { flex: 1 },
   userMenu: { position: 'absolute', top: 56, right: 16, borderRadius: 12, borderWidth: 1, minWidth: 140, overflow: 'hidden' },
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
@@ -250,12 +430,19 @@ const s = StyleSheet.create({
   taskBar: { width: 3 },
   taskContent: { flex: 1, padding: 14, paddingLeft: 12 },
   taskTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  taskDesc: { fontSize: 12, color: '#8B949E', marginBottom: 4 },
+  taskDesc: { fontSize: 12, marginBottom: 4 },
   taskMeta: { fontSize: 11 },
   chip: { borderRadius: 50, paddingVertical: 3, paddingHorizontal: 8 },
   chipText: { fontSize: 10, fontWeight: '600' },
-  actionBtn: { height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  actionBtnText: { fontSize: 11, fontWeight: '600' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 34, borderRadius: 8, justifyContent: 'center', borderWidth: 1, paddingHorizontal: 4 },
+  actionBtnText: { fontSize: 10, fontWeight: '600' },
   emptyWrap: { paddingTop: 60, alignItems: 'center' },
   emptyText: { fontSize: 14 },
+  centeredOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  centeredModal: { width: '100%', borderRadius: 20, borderWidth: 1, padding: 20 },
+  popupTitle: { fontSize: 16, fontWeight: '800' },
+  popupLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
+  popupInput: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, height: 100, textAlignVertical: 'top' },
+  photoBox: { height: 110, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' },
+  popupBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 });

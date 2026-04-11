@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from database import get_db, TaskInstance, Notification, TaskTemplate, User
 from schemas import TaskInstanceCreate, TaskInstanceOut, TaskStatusUpdate, TaskRating, TaskUpdate
@@ -146,12 +146,29 @@ def caregiver_stats(user_id: int, db: Session = Depends(get_db)):
     ratings = [t.rating for t in tasks if t.rating is not None]
     today = datetime.utcnow().date()
     tasks_today = sum(1 for t in tasks if t.scheduled_for.date() == today)
+
+    # Weekly data: Mon=0 to Sun=6 (current week)
+    week_start = today - timedelta(days=today.weekday())
+    weekly_data = []
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        day_tasks = [t for t in tasks if t.scheduled_for.date() == day]
+        day_total = len(day_tasks)
+        day_comp = sum(1 for t in day_tasks if t.status == "tamamlandi")
+        weekly_data.append({
+            "day": i,
+            "total": day_total,
+            "completed": day_comp,
+            "rate": round(day_comp / day_total * 100) if day_total else 0,
+        })
+
     return {
         "total_assigned": total,
         "completed_tasks": completed,
         "completion_rate": round(completed / total * 100, 1) if total else 0,
         "avg_rating": round(sum(ratings) / len(ratings), 2) if ratings else 0,
         "tasks_today": tasks_today,
+        "weekly_data": weekly_data,
     }
 
 

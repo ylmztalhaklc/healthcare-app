@@ -1,9 +1,10 @@
 ﻿import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { tasksAPI } from '../../services/api';
+import { tasksAPI, notificationsAPI } from '../../services/api';
 
 const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -13,9 +14,23 @@ export default function CaregiverStatsScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const weekBars = [55, 70, 85, 60, 90, 45, 65];
 
   useEffect(() => { fetchStats(); }, []);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsAPI.getAll(user?.id);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setUnreadCount(arr.filter(n => !n.is_read).length);
+      } catch {}
+    };
+    fetchUnread();
+    const t = setInterval(fetchUnread, 30000);
+    return () => clearInterval(t);
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -30,10 +45,10 @@ export default function CaregiverStatsScreen({ navigation }) {
   };
 
   const statTiles = stats ? [
-    { icon: '✅', label: 'Tamamlanan', value: stats.completed_tasks, color: colors.success },
-    { icon: '📊', label: 'Tamamlanma', value: (stats.completion_rate ?? 0) + '%', color: colors.primary },
-    { icon: '⭐', label: 'Ort. Puan', value: stats.avg_rating ? stats.avg_rating.toFixed(1) : '---', color: '#FFB347' },
-    { icon: '📅', label: 'Bugünkü', value: stats.tasks_today, color: colors.textPrimary },
+    { iconName: 'checkmark-circle', label: 'Tamamlanan', value: stats.completed_tasks, color: colors.success },
+    { iconName: 'bar-chart', label: 'Tamamlanma', value: (stats.completion_rate ?? 0) + '%', color: colors.primary },
+    { iconName: 'star', label: 'Ort. Puan', value: stats.avg_rating ? stats.avg_rating.toFixed(1) : '---', color: '#FFB347' },
+    { iconName: 'calendar', label: 'Bugünkü', value: stats.tasks_today, color: colors.textPrimary },
   ] : [];
 
   return (
@@ -45,10 +60,13 @@ export default function CaregiverStatsScreen({ navigation }) {
         </View>
         <View style={s.headerRight}>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
-            <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+            <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
+            {unreadCount > 0 && (
+              <View style={s.badge}><Text style={s.badgeTxt}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials()}</Text>
@@ -73,15 +91,18 @@ export default function CaregiverStatsScreen({ navigation }) {
           <View style={s.statsGrid}>
             {statTiles.map((tile, i) => (
               <View key={i} style={[s.statTile, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={s.tileIcon}>{tile.icon}</Text>
-                <Text style={[s.tileNum, { color: tile.color }]}>{tile.value}</Text>
-                <Text style={[s.tileLbl, { color: colors.textSecondary }]}>{tile.label}</Text>
-              </View>
+                    <Ionicons name={tile.iconName} size={24} color={tile.color} style={{ marginBottom: 8 }} />
+                    <Text style={[s.tileNum, { color: tile.color }]}>{tile.value}</Text>
+                    <Text style={[s.tileLbl, { color: colors.textSecondary }]}>{tile.label}</Text>
+                  </View>
             ))}
           </View>
 
           <View style={[s.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[s.chartTitle, { color: colors.textPrimary }]}>📈 Haftalık Performans</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Ionicons name="trending-up" size={16} color={colors.textPrimary} />
+              <Text style={[s.chartTitle, { color: colors.textPrimary }]}>Haftalık Performans</Text>
+            </View>
             <View style={s.barChart}>
               {weekBars.map((h, i) => (
                 <View key={i} style={s.barCol}>
@@ -98,7 +119,10 @@ export default function CaregiverStatsScreen({ navigation }) {
           </View>
 
           <View style={[s.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[s.summaryTitle, { color: colors.textPrimary }]}>📋 Performans Özeti</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <Ionicons name="clipboard-outline" size={16} color={colors.textPrimary} />
+              <Text style={[s.summaryTitle, { color: colors.textPrimary }]}>Performans Özeti</Text>
+            </View>
             {[
               { label: 'Toplam Atanan Görev', value: stats?.total_assigned ?? 0, color: colors.textPrimary },
               { label: 'Tamamlanan Görev', value: stats?.completed_tasks ?? 0, color: colors.success },
@@ -140,6 +164,8 @@ const s = StyleSheet.create({
   barCol: { flex: 1, alignItems: 'center', gap: 4 },
   barFill: { width: '100%' },
   barDay: { fontSize: 9, fontWeight: '500' },
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  badgeTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
   summaryCard: { borderRadius: 14, borderWidth: 1, padding: 16 },
   summaryTitle: { fontSize: 13, fontWeight: '700', marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 9, borderBottomWidth: 0.5 },

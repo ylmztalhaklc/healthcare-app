@@ -53,8 +53,21 @@ def get_user_conversations(user_id: int, db: Session = Depends(get_db)):
                     "id": contact_user.id,
                     "name": contact_user.full_name,
                     "last_message": msg.content,
-                    "sent_at": msg.sent_at.isoformat()
+                    "last_message_time": msg.sent_at.isoformat(),
+                    "sent_at": msg.sent_at.isoformat(),
+                    "unread_count": 0
                 }
+
+    # Count unread messages per conversation
+    for contact_id in list(contacts.keys()):
+        unread = db.query(Message).filter(
+            Message.sender_id == contact_id,
+            Message.receiver_id == user_id,
+            Message.is_read == False,
+            Message.is_deleted == False
+        ).count()
+        contacts[contact_id]["unread_count"] = unread
+
     return list(contacts.values())
 
 

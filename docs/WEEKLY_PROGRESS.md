@@ -174,9 +174,59 @@ Hafta 2 sonu itibariyle:
 
 ---
 
-## HAFTA 4 (Vize) — (Gelecek)
+## HAFTA 4 (Vize) — UI Polisman, Gercek Veri Entegrasyonu ve Tek Tikla Baslatma
 
-_Henüz başlanmadı._
+**Tarih:** 2026-04-11
+**Sure:** ~8 saat
+**Durum:** Tamamlandi
+
+### Bu Hafta Yapananlar
+
+**Mesajlasma Ekranlari — Kart Tasarimi ve Okunmamis Gostergesi**
+
+- `RelativeMessagesScreen` ve `CaregiverMessagesScreen` yeniden tasarlandi
+- Her konusma bir kart olarak listeleniyor: son mesaj, son mesaj saati ve okunmamis mesaj sayisi gosteriliyor
+- Okunmamis mesaj varsa kart kenari canli bir nabiz animasyonu (Animated API ile loop) gosteriyor
+- Karta ilk tiklandiktan sonra animasyon duruyor, kart okundu olarak isaretleniyor
+- `GET /messages/user/{user_id}/conversations` endpoint'i `unread_count` ve `last_message_time` dondurur hale getirildi
+
+**Gorev Ekrani — Gorev Karti ve Modal Iyilestirmeleri**
+
+- Gorev kartlarina filigran (pozisyonu mutlak, saydam daire) eklendi; renk gorev durumuna gore eslesiyor, temaya gore farkli opakllikta gosteriliyor
+- Yildiz degerlendirme simgeleri "Tamamlandi" etiketinin altinda, ortalanmis sekilde hizalandi
+- Varsayilan saat alani bos basliyor ("Saat secin..." placeholderli); saat secici acildiginda saatin mevcut tamam saate gore onceden seciyor
+- Modal disina tiklandikinda hem gorev ekleme hem de bakici secici panel kapaniyor
+
+**Bakici Secici Panel — Tek Panel Yaklasimi**
+
+- Bakici secici, ayri bir `Modal` olarak calisiyordu; bu yaklasim gorev ekleme modalinin yuksekligini eslestiremiyordu
+- Bakici secici tamamen kaldirilip gorev ekleme `modalSheet` View'inin icine `position: absolute, top:0, left:0, right:0, bottom:0` olarak yerlestirildi
+- Boylece panel her iki yone de tamamen gorev ekleme panelini kapliyor, bosluk ve yukseklik farki sorunu ortadan kalkti
+- `modalSheet`'e `overflow: hidden` eklendi
+
+**Istatistik Ekrani — Gercek Haftalik Veri ve Gorsel Iyilestirmeler**
+
+- `GET /tasks/stats/caregiver/{user_id}` endpointi `weekly_data` dizisi dondurur hale getirildi: her gun icin `{day, total, completed, rate}` yapisi (Pzt=0, Paz=6)
+- Haftalık grafik artik backend'den gelen gercek verilerle doluyor
+- Secili bakicinin karti yesil arka plan ve onay simgesiyle vurgulanıyor
+- "Degistir" butonu hem `selectedCaregiver` hem de `stats` state'ini temizliyor; istatistikler ancak bakici secildikten sonra gosteriliyor
+- Istatistik kutucuklarinin genislikleri esitlendi (`flexBasis` / `flexGrow` ile)
+- Her kutucugun filigran rengi kendi ikon rengiyle eslestirildi
+- Kart baslik satirlarinda ikon hizalama duzeltildi
+
+**Saat Secici — Gecmis Saat Engeli Duzeltmesi**
+
+- Android emulatorunde `new Date()` UTC donebiliyordu (Turkiye UTC+3); bu nedenle saat engeli 3 saat geriden okuyordu
+- `Intl.DateTimeFormat` tabanli `getLocalNowHM()` ve `isTodayLocal()` yardimci fonksiyonlari yazildi
+- Tum `getHours()`/`getMinutes()` cagrilari bu fonksiyonlarla degistirildi; artik emulator uzerinde de dogru yerel saat okunuyor
+
+**Tek Tikla Baslatma ve Emulator Saat Dilimi Ayari**
+
+- `start.bat` olusturuldu: cift tikla her iki servisi de ayri `cmd` penceresinde baslatir
+  - Backend: `python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000`
+  - Expo: `npx expo start --android --clear`
+- Expo basladiktan 30 saniye sonra `adb` ile emulatorun saat dilimi `Europe/Istanbul` olarak ayarlaniyor
+- `README.md` tum degisikliklere gore guncellendi: kurulum adimlari, klasor yapisi, API tablosu ve ortam degiskenleri bolumleri yeniden yazildi
 
 ---
 

@@ -1,5 +1,7 @@
 import React, { useContext } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -155,7 +157,7 @@ export default function CaregiverHomeScreen({ navigation }) {
           <Text style={styles.role}>Hasta Bakıcı</Text>
         </View>
         <TouchableOpacity style={styles.themeBtn} onPress={toggleTheme}>
-          <Text style={{ fontSize: 18, color: colors.primary }}>{isDark ? '◐' : '◑'}</Text>
+          <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FBBF24' : '#60A5FA'} />
         </TouchableOpacity>
       </View>
 
@@ -173,30 +175,30 @@ export default function CaregiverHomeScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('CaregiverTasks')}>
-            <Text style={styles.actionIcon}>☐</Text>
+            <Ionicons name="checkbox-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Görevlerim</Text>
               <Text style={styles.actionDesc}>Atanan görevler</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('CaregiverMessages')}>
-            <Text style={styles.actionIcon}>✉</Text>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Mesajlar</Text>
               <Text style={styles.actionDesc}>Hasta yakınları ile iletişim</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('CaregiverStats')}>
-            <Text style={styles.actionIcon}>▪</Text>
+            <Ionicons name="bar-chart-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>İstatistikler</Text>
               <Text style={styles.actionDesc}>Performans ve istatistikler</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { messagesAPI } from '../../services/api';
@@ -61,7 +63,7 @@ export default function ChatScreen({ route, navigation }) {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Text style={{ fontSize: 24, color: colors.primary }}>{'<'}</Text>
+                    <Ionicons name="arrow-back" size={24} color={colors.primary} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{contactName}</Text>
             </View>
@@ -87,7 +89,7 @@ export default function ChatScreen({ route, navigation }) {
                         placeholderTextColor={colors.textSecondary}
                     />
                     <TouchableOpacity onPress={handleSend} style={[styles.sendBtn, { backgroundColor: colors.primary }]}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Gönder</Text>
+                        <Ionicons name="send" size={18} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>

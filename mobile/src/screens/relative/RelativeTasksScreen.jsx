@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { tasksAPI, usersAPI } from '../../services/api';
+import { Ionicons } from '@expo/vector-icons';
+import { tasksAPI, usersAPI, notificationsAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -22,17 +23,44 @@ function clockPos(index, total, radius) {
   };
 }
 
+// Emülatör UTC'de çalışsa da doğru yerel saati döner
+function getLocalNowHM() {
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat('tr-TR', {
+      hour: 'numeric', minute: 'numeric', hour12: false,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }).formatToParts(now);
+    const h = parseInt(parts.find(p => p.type === 'hour')?.value ?? now.getHours(), 10);
+    const m = parseInt(parts.find(p => p.type === 'minute')?.value ?? now.getMinutes(), 10);
+    return { h, m };
+  } catch (_) {
+    return { h: now.getHours(), m: now.getMinutes() };
+  }
+}
+
+function isTodayLocal(date) {
+  const now = new Date();
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fmt = new Intl.DateTimeFormat('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz });
+    return fmt.format(date) === fmt.format(now);
+  } catch (_) {
+    return date.toDateString() === now.toDateString();
+  }
+}
+
 function getStatusColor(status, colors) {
   switch (status) {
     case 'tamamlandi': return colors.success;
-    case 'devam_ediyor': return colors.primary;
-    case 'sorun_var': return colors.error;
-    default: return colors.warning;
+    case 'devam_ediyor': return '#FB923C';
+    case 'sorun_var': return '#F87171';
+    default: return '#FBBF24';
   }
 }
 function getStatusLabel(status) {
   switch (status) {
-    case 'tamamlandi': return 'Tamamlandi';
+    case 'tamamlandi': return 'Tamamlandı';
     case 'devam_ediyor': return 'Devam Ediyor';
     case 'sorun_var': return 'Sorun Var';
     default: return 'Bekliyor';
@@ -78,7 +106,7 @@ export default function RelativeTasksScreen({ navigation }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newTime, setNewTime] = useState('12:00');
+  const [newTime, setNewTime] = useState('');
   const [caregivers, setCaregivers] = useState([]);
   const [caregiverSearch, setCaregiverSearch] = useState('');
   const [selectedCaregiver, setSelectedCaregiver] = useState(null);
@@ -86,6 +114,9 @@ export default function RelativeTasksScreen({ navigation }) {
 
   // Caregiver picker modal (separate screen)
   const [showCaregiverPicker, setShowCaregiverPicker] = useState(false);
+
+  // Unread notification count
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Time picker
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -109,6 +140,20 @@ export default function RelativeTasksScreen({ navigation }) {
 
   useEffect(() => { fetchTasks(); }, [selectedDate]);
   useEffect(() => { if (showAddModal) fetchCaregivers(); }, [showAddModal]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await notificationsAPI.getAll(user?.id);
+      const arr = Array.isArray(res.data) ? res.data : [];
+      setUnreadCount(arr.filter(n => !n.is_read).length);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -143,12 +188,13 @@ export default function RelativeTasksScreen({ navigation }) {
   };
 
   const openTimePicker = () => {
-    const timeParts = newTime.split(':');
-    const h = parseInt(timeParts[0], 10) || 12;
-    const m = parseInt(timeParts[1], 10) || 0;
-    setPickerHour(h);
-    setPickerMinute(m);
-    setMinuteInputText(String(m).padStart(2, '0'));
+    if (newTime) {
+      const timeParts = newTime.split(':');
+      const h = parseInt(timeParts[0], 10);
+      const m = parseInt(timeParts[1], 10) || 0;
+      if (!isNaN(h)) { setPickerHour(h); setPickerMinute(m); setMinuteInputText(String(m).padStart(2, '0')); }
+    }
+    // else keep pickerHour/pickerMinute as set by FAB (next full hour)
     setPickerStep('hour');
     setShowTimePicker(true);
   };
@@ -160,9 +206,13 @@ export default function RelativeTasksScreen({ navigation }) {
   };
 
   const handleMinuteSelect = (m) => {
-    const sched = new Date(selectedDate);
-    sched.setHours(pickerHour, m, 0, 0);
-    if (sched < new Date()) {
+    const { h: nowH, m: nowM } = getLocalNowHM();
+    const isToday = isTodayLocal(selectedDate);
+    const isPast = isToday && (
+      pickerHour < nowH ||
+      (pickerHour === nowH && m <= nowM)
+    );
+    if (isPast) {
       Alert.alert('Hata', 'Seçilen zaman geçmişte kalamaz. Lütfen ileri bir saat seçin.');
       return;
     }
@@ -194,7 +244,7 @@ export default function RelativeTasksScreen({ navigation }) {
       });
       Alert.alert('Başarılı', 'Görev oluşturuldu.');
       setShowAddModal(false);
-      setNewTitle(''); setNewDesc(''); setNewTime('12:00');
+      setNewTitle(''); setNewDesc(''); setNewTime('');
       setSelectedCaregiver(null); setCaregiverSearch('');
       fetchTasks();
     } catch (e) {
@@ -274,19 +324,31 @@ export default function RelativeTasksScreen({ navigation }) {
         onPress={() => openDetail(item)}
         activeOpacity={0.8}
       >
+        <View pointerEvents="none" style={{ position: 'absolute', top: -22, right: -22, width: 90, height: 90, borderRadius: 45, backgroundColor: isDark ? sc + '12' : sc + '20' }} />
         <View style={[s.taskBar, { backgroundColor: sc }]} />
         <View style={s.taskInfo}>
           <Text style={[s.taskTitle, { color: colors.textPrimary }]}>{item.title}</Text>
           <View style={s.taskMeta}>
-            {timeStr ? <Text style={[s.metaItem, { color: colors.textSecondary }]}>Clock {timeStr}</Text> : null}
+            {timeStr ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
+                <Text style={[s.metaItem, { color: colors.textSecondary }]}>{timeStr}</Text>
+              </View>
+            ) : null}
             {item.description ? <Text style={[s.metaItem, { color: colors.textSecondary }]} numberOfLines={1}>{item.description}</Text> : null}
           </View>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 4, paddingRight: 12, paddingVertical: 14 }}>
+        <View style={{ alignItems: 'center', justifyContent: 'center', gap: 4, paddingRight: 12, paddingVertical: 14, minWidth: 80 }}>
           <View style={[s.chip, { backgroundColor: cb }]}>
             <Text style={[s.chipText, { color: sc }]}>{getStatusLabel(item.status)}</Text>
           </View>
-          {item.rating ? <Text style={{ fontSize: 10, color: '#FFB347' }}>{'Star'.repeat(item.rating)}</Text> : null}
+          {item.rating ? (
+            <View style={{ flexDirection: 'row', gap: 1 }}>
+              {Array.from({ length: item.rating }).map((_, i) => (
+                <Ionicons key={i} name="star" size={11} color="#FFB347" />
+              ))}
+            </View>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -302,10 +364,15 @@ export default function RelativeTasksScreen({ navigation }) {
         </View>
         <View style={s.headerRight}>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
-            <Text style={{ fontSize: 16 }}>{isDark ? '☀️' : '🌙'}</Text>
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
-            <Text style={{ fontSize: 18 }}>🔔</Text>
+          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => { fetchUnreadCount(); navigation.navigate('Notifications'); }}>
+            <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
+            {unreadCount > 0 && (
+              <View style={s.badge}>
+                <Text style={s.badgeTxt}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials()}</Text>
@@ -328,13 +395,13 @@ export default function RelativeTasksScreen({ navigation }) {
       <View style={[s.calWrap, { backgroundColor: colors.background }]}>
         <View style={s.calHeader}>
           <TouchableOpacity onPress={() => setWeekOffset(w => w - 1)} style={[s.calArrow, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 18 }}>‹</Text>
+            <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text style={[s.calMonth, { color: colors.textPrimary }]}>
             {MONTHS_TR[selectedDate.getMonth()]} {selectedDate.getFullYear()}
           </Text>
           <TouchableOpacity onPress={() => setWeekOffset(w => w + 1)} style={[s.calArrow, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 18 }}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
         <View style={s.weekRow}>
@@ -378,7 +445,7 @@ export default function RelativeTasksScreen({ navigation }) {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
           ListEmptyComponent={
             <View style={s.emptyWrap}>
-              <Text style={{ fontSize: 40, marginBottom: 12 }}>📋</Text>
+              <Ionicons name="clipboard-outline" size={40} color={colors.textMuted} style={{ marginBottom: 12 }} />
               <Text style={[s.emptyTitle, { color: colors.textPrimary }]}>Görev Yok</Text>
               <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bu tarihte görev bulunmuyor.</Text>
             </View>
@@ -387,14 +454,23 @@ export default function RelativeTasksScreen({ navigation }) {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={[s.fab, { backgroundColor: colors.primary }]} onPress={() => setShowAddModal(true)}>
+      <TouchableOpacity style={[s.fab, { backgroundColor: colors.primary }]} onPress={() => {
+        const { h } = getLocalNowHM();
+        const nextH = (h + 1) % 24;
+        setNewTime('');           // show "Saat seç..." — no default displayed
+        setPickerHour(nextH);     // pre-select next full hour in clock
+        setPickerMinute(0);
+        setMinuteInputText('00');
+        setShowAddModal(true);
+      }}>
         <Text style={s.fabText}>+</Text>
       </TouchableOpacity>
 
       {/* ADD TASK MODAL */}
       <Modal animationType="slide" transparent visible={showAddModal} onRequestClose={() => setShowAddModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={s.modalBg}>
+          <TouchableOpacity style={s.modalBg} activeOpacity={1} onPress={() => { setShowAddModal(false); setNewTime(''); setSelectedCaregiver(null); setCaregiverSearch(''); }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ width: '100%' }}>
             <View style={[s.modalSheet, { backgroundColor: colors.surface }]}>
               <View style={[s.handle, { backgroundColor: colors.border }]} />
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -419,10 +495,13 @@ export default function RelativeTasksScreen({ navigation }) {
                   style={[s.input, { backgroundColor: colors.surface2, borderColor: newTime ? colors.primary : colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                   onPress={openTimePicker}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: newTime ? colors.primary : colors.textMuted }}>
-                    {newTime ? `🕐  ${newTime}` : 'Saat seçin...'}
-                  </Text>
-                  <Text style={{ fontSize: 18, color: colors.textMuted }}>›</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="time-outline" size={16} color={newTime ? colors.primary : colors.textMuted} />
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: newTime ? colors.primary : colors.textMuted }}>
+                      {newTime ? newTime : 'Saat seçin...'}
+                    </Text>
+                  </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>BAKICI SEÇ</Text>
@@ -446,7 +525,7 @@ export default function RelativeTasksScreen({ navigation }) {
                 <View style={[s.modalFooter, { marginTop: 16 }]}>
                   <TouchableOpacity
                     style={[s.modalBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
-                    onPress={() => { setShowAddModal(false); setCaregiverSearch(''); setSelectedCaregiver(null); }}
+                    onPress={() => { setShowAddModal(false); setCaregiverSearch(''); setSelectedCaregiver(null); setNewTime(''); }}
                   >
                     <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>İptal</Text>
                   </TouchableOpacity>
@@ -458,8 +537,68 @@ export default function RelativeTasksScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               </ScrollView>
+
+              {/* CAREGIVER PICKER — inline overlay matching sheet size */}
+              {showCaregiverPicker && (
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, paddingBottom: 32 }}>
+                  <View style={[s.handle, { backgroundColor: colors.border }]} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <Text style={[s.modalTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Bakıcı Seç</Text>
+                    <TouchableOpacity onPress={() => { setShowCaregiverPicker(false); setCaregiverSearch(''); }}>
+                      <Ionicons name="close" size={22} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[s.input, { backgroundColor: colors.surface2, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginBottom: 8 }]}>
+                    <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 13, color: colors.textPrimary }}
+                      placeholder="Bakıcı ara..." placeholderTextColor={colors.textMuted}
+                      value={caregiverSearch} onChangeText={setCaregiverSearch}
+                      autoFocus
+                    />
+                  </View>
+                  <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    {filteredCaregivers.length === 0 ? (
+                      <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+                        <Ionicons name="people-outline" size={40} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>
+                          {caregiverSearch ? 'Bakıcı bulunamadı' : 'Bakıcılar yükleniyor...'}
+                        </Text>
+                      </View>
+                    ) : filteredCaregivers.map(c => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[s.caregiverRow,
+                          selectedCaregiver?.id === c.id
+                            ? { backgroundColor: colors.primarySoft, borderColor: colors.primary, borderWidth: 1.5 }
+                            : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+                          { borderRadius: 14, marginBottom: 10 }
+                        ]}
+                        onPress={() => {
+                          setSelectedCaregiver(selectedCaregiver?.id === c.id ? null : c);
+                          setShowCaregiverPicker(false);
+                          setCaregiverSearch('');
+                        }}
+                      >
+                        <View style={[s.cgAvatar, { backgroundColor: colors.primary }]}>
+                          <Text style={s.cgAvatarTxt}>{c.full_name.split(' ').map(x => x[0]).join('').substring(0,2).toUpperCase()}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.cgName, { color: selectedCaregiver?.id === c.id ? colors.primary : colors.textPrimary }]}>{c.full_name}</Text>
+                          <Text style={{ fontSize: 11, color: colors.textSecondary }}>Hasta Bakıcı</Text>
+                        </View>
+                        {selectedCaregiver?.id === c.id && (
+                          <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                    <View style={{ height: 20 }} />
+                  </ScrollView>
+                </View>
+              )}
             </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -508,49 +647,55 @@ export default function RelativeTasksScreen({ navigation }) {
                     {/* Akrep ucu */}
                     <View style={{ position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, opacity: 0.85, zIndex: 6, top: CLOCK_CENTER - hLen * Math.cos(haRad) - 4, left: CLOCK_CENTER + hLen * Math.sin(haRad) - 4 }} />
 
-                    {pickerStep === 'hour' ? (
-                      <>
-                        {/* Dış halka: 12, 1, ..., 11 */}
-                        {[12,1,2,3,4,5,6,7,8,9,10,11].map((h, i) => {
+                    {(() => {
+                      const { h: nowH, m: nowM } = getLocalNowHM();
+                      const isToday = isTodayLocal(selectedDate);
+                      return pickerStep === 'hour' ? (
+                        <>
+                          {/* Dış halka: 12, 1, ..., 11 */}
+                          {[12,1,2,3,4,5,6,7,8,9,10,11].map((h, i) => {
+                            const pos = clockPos(i, 12, OUTER_R);
+                            const sel = pickerHour === h;
+                            // past = today and h:59 is already behind now (i.e. h < nowH)
+                            const past = isToday && h < nowH;
+                            return (
+                              <TouchableOpacity key={`o${h}`} disabled={past} onPress={() => handleHourSelect(h)}
+                                style={{ position: 'absolute', width: CELL_SIZE, height: CELL_SIZE, borderRadius: CELL_SIZE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? colors.primary : 'transparent', opacity: past ? 0.3 : 1, left: pos.left, top: pos.top }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: sel ? '#fff' : colors.textPrimary }}>{h}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                          {/* İç halka: 0, 13, ..., 23 */}
+                          {[0,13,14,15,16,17,18,19,20,21,22,23].map((h, i) => {
+                            const pos = clockPos(i, 12, INNER_R);
+                            const sel = pickerHour === h;
+                            const past = isToday && h < nowH;
+                            return (
+                              <TouchableOpacity key={`in${h}`} disabled={past} onPress={() => handleHourSelect(h)}
+                                style={{ position: 'absolute', width: CELL_SIZE - 4, height: CELL_SIZE - 4, borderRadius: (CELL_SIZE - 4) / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? colors.primary : 'transparent', opacity: past ? 0.3 : 1, left: pos.left + 2, top: pos.top + 2 }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: sel ? '#fff' : colors.textSecondary }}>{String(h).padStart(2,'0')}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        [0,5,10,15,20,25,30,35,40,45,50,55].map((m, i) => {
                           const pos = clockPos(i, 12, OUTER_R);
-                          const sel = pickerHour === h;
-                          const sched = new Date(selectedDate); sched.setHours(h, 59, 0, 0);
-                          const past = sched < new Date();
+                          const sel = pickerMinute === m;
+                          // past = today and pickerHour:m is behind now
+                          const past = isToday && (
+                            pickerHour < nowH ||
+                            (pickerHour === nowH && m <= nowM)
+                          );
                           return (
-                            <TouchableOpacity key={`o${h}`} disabled={past} onPress={() => handleHourSelect(h)}
+                            <TouchableOpacity key={m} disabled={past} onPress={() => handleMinuteSelect(m)}
                               style={{ position: 'absolute', width: CELL_SIZE, height: CELL_SIZE, borderRadius: CELL_SIZE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? colors.primary : 'transparent', opacity: past ? 0.3 : 1, left: pos.left, top: pos.top }}>
-                              <Text style={{ fontSize: 14, fontWeight: '700', color: sel ? '#fff' : colors.textPrimary }}>{h}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? '#fff' : colors.textPrimary }}>{String(m).padStart(2,'0')}</Text>
                             </TouchableOpacity>
                           );
-                        })}
-                        {/* İç halka: 0, 13, ..., 23 */}
-                        {[0,13,14,15,16,17,18,19,20,21,22,23].map((h, i) => {
-                          const pos = clockPos(i, 12, INNER_R);
-                          const sel = pickerHour === h;
-                          const sched = new Date(selectedDate); sched.setHours(h, 59, 0, 0);
-                          const past = sched < new Date();
-                          return (
-                            <TouchableOpacity key={`in${h}`} disabled={past} onPress={() => handleHourSelect(h)}
-                              style={{ position: 'absolute', width: CELL_SIZE - 4, height: CELL_SIZE - 4, borderRadius: (CELL_SIZE - 4) / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? colors.primary : 'transparent', opacity: past ? 0.3 : 1, left: pos.left + 2, top: pos.top + 2 }}>
-                              <Text style={{ fontSize: 11, fontWeight: '700', color: sel ? '#fff' : colors.textSecondary }}>{String(h).padStart(2,'0')}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </>
-                    ) : (
-                      [0,5,10,15,20,25,30,35,40,45,50,55].map((m, i) => {
-                        const pos = clockPos(i, 12, OUTER_R);
-                        const sel = pickerMinute === m;
-                        const sched = new Date(selectedDate); sched.setHours(pickerHour, m, 0, 0);
-                        const past = sched < new Date();
-                        return (
-                          <TouchableOpacity key={m} disabled={past} onPress={() => handleMinuteSelect(m)}
-                            style={{ position: 'absolute', width: CELL_SIZE, height: CELL_SIZE, borderRadius: CELL_SIZE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: sel ? colors.primary : 'transparent', opacity: past ? 0.3 : 1, left: pos.left, top: pos.top }}>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: sel ? '#fff' : colors.textPrimary }}>{String(m).padStart(2,'0')}</Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
+                        })
+                      );
+                    })()}
                   </View>
 
                   {/* Elle dakika girişi */}
@@ -582,7 +727,7 @@ export default function RelativeTasksScreen({ navigation }) {
                     </TouchableOpacity>
                     {pickerStep === 'minute' && (
                       <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.primary }]} onPress={() => handleMinuteSelect(pickerMinute)}>
-                        <Text style={[s.modalBtnTxt, { color: '#fff' }]}>Tamam ✓</Text>
+                        <Text style={[s.modalBtnTxt, { color: '#fff' }]}>Tamam</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -593,58 +738,6 @@ export default function RelativeTasksScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* CAREGIVER PICKER MODAL */}
-      <Modal animationType="slide" transparent visible={showCaregiverPicker} onRequestClose={() => { setShowCaregiverPicker(false); setCaregiverSearch(''); }}>
-        <View style={s.modalBg}>
-          <View style={[s.modalSheet, { backgroundColor: colors.surface, maxHeight: '80%' }]}>
-            <View style={[s.handle, { backgroundColor: colors.border }]} />
-            <Text style={[s.modalTitle, { color: colors.textPrimary }]}>Bakıcı Seç</Text>
-            <TextInput
-              style={[s.input, { backgroundColor: colors.surface2, borderColor: colors.border, color: colors.textPrimary, marginBottom: 12 }]}
-              placeholder="Bakıcı ara..." placeholderTextColor={colors.textMuted}
-              value={caregiverSearch} onChangeText={setCaregiverSearch}
-              autoFocus
-            />
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-              {filteredCaregivers.length === 0 ? (
-                <Text style={[s.noResultTxt, { color: colors.textMuted }]}>
-                  {caregiverSearch ? 'Bakıcı bulunamadı' : 'Bakıcılar yükleniyor...'}
-                </Text>
-              ) : filteredCaregivers.map(c => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[s.caregiverRow,
-                    selectedCaregiver?.id === c.id ? { backgroundColor: colors.primarySoft } : { backgroundColor: colors.surface2 },
-                    { borderRadius: 10, marginBottom: 8 }
-                  ]}
-                  onPress={() => {
-                    setSelectedCaregiver(selectedCaregiver?.id === c.id ? null : c);
-                    setShowCaregiverPicker(false);
-                    setCaregiverSearch('');
-                  }}
-                >
-                  <View style={[s.cgAvatar, { backgroundColor: colors.primary }]}>
-                    <Text style={s.cgAvatarTxt}>{c.full_name.split(' ').map(x => x[0]).join('').substring(0,2).toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.cgName, { color: selectedCaregiver?.id === c.id ? colors.primary : colors.textPrimary }]}>{c.full_name}</Text>
-                    <Text style={{ fontSize: 11, color: colors.textSecondary }}>Hasta Bakıcı</Text>
-                  </View>
-                  {selectedCaregiver?.id === c.id && <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>checkmark</Text>}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={[s.modalBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border, marginTop: 12 }]}
-              onPress={() => { setShowCaregiverPicker(false); setCaregiverSearch(''); }}
-            >
-              <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>Kapat</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* TASK DETAIL MODAL */}
       <Modal animationType="slide" transparent visible={showDetailModal} onRequestClose={() => { setShowDetailModal(false); setEditMode(false); setShowDeleteConfirm(false); }}>
         <View style={s.modalBg}>
           <View style={[s.modalSheet, { backgroundColor: colors.surface, maxHeight: '90%' }]}>
@@ -709,12 +802,14 @@ export default function RelativeTasksScreen({ navigation }) {
                       <View style={{ flexDirection: 'row', gap: 8 }}>
                         {selectedTask?.status !== 'tamamlandi' && (
                           <TouchableOpacity style={[s.smallBtn, { backgroundColor: colors.primarySoft, borderColor: colors.primary }]} onPress={() => { setEditTitle(selectedTask?.title || ''); setEditDesc(selectedTask?.description || ''); setEditMode(true); }}>
-                            <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700' }}>Duzenle</Text>
+                            <Text style={{ fontSize: 11, color: colors.primary, fontWeight: '700' }}>Düzenle</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={[s.smallBtn, { backgroundColor: 'rgba(255,107,107,0.1)', borderColor: colors.error }]} onPress={handleDeleteTask}>
-                          <Text style={{ fontSize: 11, color: colors.error, fontWeight: '700' }}>Sil</Text>
-                        </TouchableOpacity>
+                        {selectedTask?.status !== 'tamamlandi' && (
+                          <TouchableOpacity style={[s.smallBtn, { backgroundColor: 'rgba(255,107,107,0.1)', borderColor: colors.error }]} onPress={handleDeleteTask}>
+                            <Text style={{ fontSize: 11, color: colors.error, fontWeight: '700' }}>Sil</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                   </View>
@@ -775,6 +870,8 @@ const s = StyleSheet.create({
   headerName: { fontSize: 16, fontWeight: '700' },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  badgeTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
   menuOverlay: { flex: 1 },
   userMenu: { position: 'absolute', top: 56, right: 16, borderRadius: 12, borderWidth: 1, minWidth: 160, overflow: 'hidden' },
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
@@ -800,10 +897,10 @@ const s = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingTop: 48 },
   emptyTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   emptyText: { fontSize: 13, textAlign: 'center' },
-  fab: { position: 'absolute', bottom: 80, right: 20, width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center', elevation: 6 },
+  fab: { position: 'absolute', bottom: 80, right: 20, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 6 },
   fabText: { fontSize: 28, fontWeight: '300', color: '#fff' },
   modalBg: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20 },
+  modalSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, overflow: 'hidden' },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 17, fontWeight: '700', marginBottom: 16 },
   fieldLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
@@ -813,6 +910,7 @@ const s = StyleSheet.create({
   timeChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1.5 },
   timePickerCell: { width: 56, height: 48, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   selectorBtn: { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 4 },
+  cgPickerSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32, maxHeight: '55%' },
   caregiverRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 10 },
   cgAvatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   cgAvatarTxt: { fontSize: 12, fontWeight: '700', color: '#fff' },

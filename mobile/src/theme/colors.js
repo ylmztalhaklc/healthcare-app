@@ -1,97 +1,97 @@
 // ─── DARK THEME COLORS ────────────────────────────────────────
 export const dark = {
-  // Backgrounds
-  background: '#0D1117',
-  surface: '#161B22',
-  surface2: '#21262D',
-  surface3: '#2D333B',
-  card: '#21262D',
+  // Backgrounds — derin lacivert-siyah ambient
+  background: '#0A0F1E',
+  surface: '#111827',
+  surface2: '#1A2236',
+  surface3: '#222D42',
+  card: '#151E30',
 
-  // Primary / Accent
-  primary: '#4ECDC4',
-  primaryDark: '#3AB5AC',
-  secondary: '#95E1D3',
-  primarySoft: 'rgba(78,205,196,0.15)',
+  // Primary / Accent — teal-cyan ambient glow
+  primary: '#38BDF8',
+  primaryDark: '#0EA5E9',
+  secondary: '#7DD3FC',
+  primarySoft: 'rgba(56,189,248,0.12)',
 
-  // Status colors
-  success: '#56CFB2',
-  warning: '#FFB347',
-  error: '#FF6B6B',
-  info: '#58A6FF',
+  // Status colors — soft ambient
+  success: '#34D399',
+  warning: '#FBBF24',
+  error: '#F87171',
+  info: '#60A5FA',
 
   // Medication / Special
-  medication: '#FF6B9D',
-  maleBlue: '#4A9EFF',
-  femalePink: '#FF6B9D',
+  medication: '#F472B6',
+  maleBlue: '#60A5FA',
+  femalePink: '#F472B6',
 
   // Text
-  textPrimary: '#E6EDF3',
-  textSecondary: '#8B949E',
-  textMuted: '#6E7681',
-  textTertiary: '#484F58',
-  textInverse: '#0D1117',
+  textPrimary: '#E2E8F0',
+  textSecondary: '#94A3B8',
+  textMuted: '#64748B',
+  textTertiary: '#475569',
+  textInverse: '#0A0F1E',
 
-  // Borders / Dividers
-  border: 'rgba(255,255,255,0.08)',
-  divider: '#21262D',
+  // Borders / Dividers — subtle glow borders
+  border: 'rgba(56,189,248,0.1)',
+  divider: '#1A2236',
 
   // Task status
-  statusPending: '#FFB347',
-  statusActive: '#58A6FF',
-  statusDone: '#56CFB2',
-  statusProblem: '#FF6B6B',
+  statusPending: '#FBBF24',
+  statusActive: '#38BDF8',
+  statusDone: '#34D399',
+  statusProblem: '#F87171',
 
   // Severity
-  severityLow: '#56CFB2',
-  severityMedium: '#FFB347',
-  severityHigh: '#FF6B6B',
+  severityLow: '#34D399',
+  severityMedium: '#FBBF24',
+  severityHigh: '#F87171',
 };
 
 // ─── LIGHT THEME COLORS ───────────────────────────────────────
 export const light = {
-  // Backgrounds
-  background: '#F0F4F8',
+  // Backgrounds — sıcak beyaz-gri ambient
+  background: '#F8FAFF',
   surface: '#FFFFFF',
-  surface2: '#F8F9FD',
-  surface3: '#EDF2F7',
+  surface2: '#F1F5FE',
+  surface3: '#E8EFFB',
   card: '#FFFFFF',
 
-  // Primary / Accent
-  primary: '#4ECDC4',
-  primaryDark: '#3AB5AC',
-  secondary: '#95E1D3',
-  primarySoft: 'rgba(78,205,196,0.15)',
+  // Primary / Accent — mavi ambient
+  primary: '#3B82F6',
+  primaryDark: '#2563EB',
+  secondary: '#93C5FD',
+  primarySoft: 'rgba(59,130,246,0.1)',
 
   // Status colors
-  success: '#56CFB2',
-  warning: '#FFB347',
-  error: '#FF6B6B',
-  info: '#58A6FF',
+  success: '#10B981',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  info: '#3B82F6',
 
   // Medication / Special
-  medication: '#FF6B9D',
-  maleBlue: '#4A9EFF',
-  femalePink: '#FF6B9D',
+  medication: '#EC4899',
+  maleBlue: '#3B82F6',
+  femalePink: '#EC4899',
 
   // Text
-  textPrimary: '#2C3E50',
-  textSecondary: '#657786',
-  textMuted: '#8A959E',
-  textTertiary: '#A0AEC0',
+  textPrimary: '#1E293B',
+  textSecondary: '#475569',
+  textMuted: '#94A3B8',
+  textTertiary: '#CBD5E1',
   textInverse: '#FFFFFF',
 
   // Borders / Dividers
-  border: 'rgba(0,0,0,0.07)',
-  divider: '#EAEEF2',
+  border: 'rgba(59,130,246,0.12)',
+  divider: '#E8EFFB',
 
   // Task status
-  statusPending: '#FFB347',
-  statusActive: '#58A6FF',
-  statusDone: '#56CFB2',
-  statusProblem: '#FF6B6B',
+  statusPending: '#F59E0B',
+  statusActive: '#3B82F6',
+  statusDone: '#10B981',
+  statusProblem: '#EF4444',
 
   // Severity
-  severityLow: '#56CFB2',
-  severityMedium: '#FFB347',
-  severityHigh: '#FF6B6B',
+  severityLow: '#10B981',
+  severityMedium: '#F59E0B',
+  severityHigh: '#EF4444',
 };

@@ -1,5 +1,7 @@
 import React, { useContext } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -155,7 +157,7 @@ export default function RelativeHomeScreen({ navigation }) {
           <Text style={styles.role}>Hasta Yakını</Text>
         </View>
         <TouchableOpacity style={styles.themeBtn} onPress={toggleTheme}>
-          <Text style={{ fontSize: 18, color: colors.primary }}>{isDark ? '◐' : '◑'}</Text>
+          <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FBBF24' : '#60A5FA'} />
         </TouchableOpacity>
       </View>
 
@@ -173,30 +175,30 @@ export default function RelativeHomeScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('RelativeTasks')}>
-            <Text style={styles.actionIcon}>☐</Text>
+            <Ionicons name="checkbox-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Görevlerimi Gör</Text>
               <Text style={styles.actionDesc}>Tüm görevleri listele</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('RelativeMessages')}>
-            <Text style={styles.actionIcon}>✉</Text>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Mesajlar</Text>
               <Text style={styles.actionDesc}>Bakıcılar ile iletişim</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('RelativeNotifications')}>
-            <Text style={styles.actionIcon}>◐</Text>
+            <Ionicons name="notifications-outline" size={22} color={colors.primary} style={{ width: 36 }} />
             <View style={styles.actionContent}>
               <Text style={styles.actionTitle}>Bildirimler</Text>
               <Text style={styles.actionDesc}>Güncel bildirimler</Text>
             </View>
-            <Text style={styles.actionArrow}>›</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 

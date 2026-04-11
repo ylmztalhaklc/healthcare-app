@@ -1,6 +1,7 @@
 ﻿import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationsAPI } from '../../services/api';
@@ -46,11 +47,14 @@ export default function CaregiverNotificationsScreen({ navigation }) {
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
       <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={{ fontSize: 16, color: colors.primary, fontWeight: '600' }}>‹ Geri</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={[s.headerTitle, { color: colors.textPrimary }]}>
-          🔔 Bildirimler{unreadCount > 0 ? (' (' + unreadCount + ')') : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
+          <Text style={[s.headerTitle, { color: colors.textPrimary }]}>
+            Bildirimler{unreadCount > 0 ? (' (' + unreadCount + ')') : ''}
+          </Text>
+        </View>
         {unreadCount > 0 ? (
           <TouchableOpacity onPress={markAllRead}>
             <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>Tümü Oku</Text>
@@ -64,7 +68,7 @@ export default function CaregiverNotificationsScreen({ navigation }) {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : notifications.length === 0 ? (
         <View style={s.empty}>
-          <Text style={{ fontSize: 48, marginBottom: 12 }}>🔕</Text>
+          <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
           <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bildirim bulunmuyor</Text>
         </View>
       ) : (
@@ -89,7 +93,10 @@ export default function CaregiverNotificationsScreen({ navigation }) {
                 </View>
                 <Text style={[s.notifMsg, { color: colors.textSecondary }]}>{item.message}</Text>
                 {item.related_user_name ? (
-                  <Text style={[s.notifFrom, { color: colors.primary }]}>👤 {item.related_user_name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="person-outline" size={11} color={colors.primary} />
+                    <Text style={[s.notifFrom, { color: colors.primary }]}>{item.related_user_name}</Text>
+                  </View>
                 ) : null}
                 <Text style={[s.notifTime, { color: colors.textMuted }]}>{getTimeStr(item.created_at)}</Text>
               </View>
