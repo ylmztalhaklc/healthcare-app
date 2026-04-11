@@ -36,18 +36,18 @@ Hasta yakınları ile hasta bakıcıları arasındaki günlük bakım görevleri
 
 ```
 healthcare-app/
-├── start.bat                # Backend + emulator tek tiklama baslatici (Windows)
+├── start.bat                # Backend + emulator tek tıklama başlangıcı (Windows)
 ├── backend/
 │   ├── main.py              # FastAPI uygulama girisi, CORS, startup migrations
 │   ├── database.py          # SQLAlchemy modelleri ve engine
-│   ├── schemas.py           # Pydantic istek/yanit semalari
+│   ├── schemas.py           # Pydantic istek/yanıt şemaları
 │   ├── requirements.txt
 │   └── routers/
-│       ├── auth.py          # Kayit, giris, JWT
-│       ├── tasks.py         # Gorev CRUD, istatistik, haftalik veri
-│       ├── users.py         # Kullanici listeleme
+│       ├── auth.py          # Kayiı, giriş, JWT
+│       ├── tasks.py         # Görev CRUD, istatistik, haftalik veri
+│       ├── users.py         # Kullanıcı listeleme
 │       ├── notifications.py # Bildirimler
-│       └── messages.py      # Mesajlasma, okunmamis mesaj sayisi
+│       └── messages.py      # Mesajlaşma, okunmamış mesaj sayısı
 └── mobile/
     ├── App.js
     ├── app.json
@@ -67,7 +67,7 @@ healthcare-app/
         │   ├── caregiver/   # Home, Tasks, Messages, Notifications, Stats
         │   └── common/      # ChatScreen
         ├── services/
-        │   └── api.js       # Axios instance ve endpoint cagrilari
+        │   └── api.js       # Axios instance ve endpoint çağrıları
         ├── theme/           # colors.js, typography.js
         └── components/
             └── common/      # TabBarIcon, PlaceholderScreen
@@ -102,49 +102,49 @@ npm install
 npx expo start --android --clear
 ```
 
-> Android emulator baslatilmis olmalidir.
-> Emulator, host makinenin `localhost:8000` adresine `10.0.2.2:8000` uzerinden erisir.
-> `src/constants/config.js` icindeki `API_BASE_URL` degerini gerekmesi halinde degistirin.
+> Android emulator başlatılmış olmalıdır.
+> Emulator, host makinenin `localhost:8000` adresine `10.0.2.2:8000` üzerinden erişir.
+> `src/constants/config.js` içindeki `API_BASE_URL` değerini gerekmesi halinde degiştirin.
 
-### 3. Tek Adimda Baslatma (Windows)
+### 3. Tek Adımda Başlatma (Windows)
 
-Proje kok dizinindeki `start.bat` dosyasini cift tiklayarak calistirin. Backend ve Expo her biri ayri bir pencerede baslar.
+Proje kök dizinindeki `start.bat` dosyasını çift tiklayarak çalıştırın. Backend ve Expo her biri ayrı bir pencerede başlar.
 
 ---
 
-## API Ozeti
+## API Özeti
 
 | Method | Endpoint                                  | Aciklama                              |
 |--------|-------------------------------------------|---------------------------------------|
-| POST   | /auth/register                            | Kullanici kaydi                       |
-| POST   | /auth/login                               | Giris, JWT dondurur                   |
-| GET    | /tasks/                                   | Gorev listesi                         |
-| POST   | /tasks/                                   | Yeni gorev olustur                    |
-| PATCH  | /tasks/{id}                               | Gorev guncelle / durum degistir       |
-| DELETE | /tasks/{id}                               | Gorev sil                             |
-| GET    | /tasks/stats/caregiver/{user_id}          | Bakici istatistikleri + haftalik veri |
-| GET    | /messages/user/{user_id}/conversations    | Konusmalar + okunmamis mesaj sayisi   |
-| GET    | /messages/{user_id}/{contact_id}          | Mesaj gecmisi                         |
-| POST   | /messages/                                | Mesaj gonder                          |
+| POST   | /auth/register                            | Kullanıcı Kaydı                       |
+| POST   | /auth/login                               | Giriş, JWT döndürür                   |
+| GET    | /tasks/                                   | Görev listesi                         |
+| POST   | /tasks/                                   | Yeni görev oluştur                    |
+| PATCH  | /tasks/{id}                               | Görev güncelle / durum degiştir       |
+| DELETE | /tasks/{id}                               | Görev sil                             |
+| GET    | /tasks/stats/caregiver/{user_id}          | Bakıcı istatistikleri + haftalık veri |
+| GET    | /messages/user/{user_id}/conversations    | Konuşmalar + okunmamış mesaj sayısı   |
+| GET    | /messages/{user_id}/{contact_id}          | Mesaj gecçişi                         |
+| POST   | /messages/                                | Mesaj gönder                          |
 | GET    | /notifications/{user_id}                  | Bildirimler                           |
-| GET    | /users/caregivers                         | Bakici listesi                        |
+| GET    | /users/caregivers                         | Bakıcı listesi                        |
 
 ---
 
-## Ortam Degiskenleri
+## Ortam Degişkenleri
 
-`backend/.env` dosyasi asagidaki degiskeni icermelidir:
+`backend/.env` dosyası aşağıdaki değişkeni içermelidir:
 
 ```
-SECRET_KEY=gizli-bir-deger
+SECRET_KEY=gizli-bir-değer
 ```
 
-JWT imzalama icin kullanilir. Uretim ortaminda guclu ve rastgele bir deger kullanin.
+JWT imzalama için kullanılır. Üretim ortamında güçlü ve rastgele bir değer kullanın.
 
 ---
 
 ## Haftalik Ilerleme
 
-[docs/WEEKLY_PROGRESS.md](docs/WEEKLY_PROGRESS.md) dosyasina bakiniz.
+[docs/WEEKLY_PROGRESS.md](docs/WEEKLY_PROGRESS.md) dosyasına bakınız.
 
 
