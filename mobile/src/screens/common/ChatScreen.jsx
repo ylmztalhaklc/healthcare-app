@@ -18,6 +18,7 @@ export default function ChatScreen({ route, navigation }) {
     useEffect(() => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 5000);
+        messagesAPI.markAllReadFrom(user.id, contactId).catch(() => {});
         return () => clearInterval(interval);
     }, []);
 

@@ -1,7 +1,8 @@
-﻿import React, { useState, useContext, useEffect, useRef } from 'react';
+﻿import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { messagesAPI, usersAPI, notificationsAPI } from '../../services/api';
@@ -30,7 +31,8 @@ export default function RelativeMessagesScreen({ navigation }) {
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    fetchConversations();
     const fetchUnread = async () => {
       try {
         const res = await notificationsAPI.getAll(user?.id);
@@ -41,7 +43,7 @@ export default function RelativeMessagesScreen({ navigation }) {
     fetchUnread();
     const t = setInterval(fetchUnread, 30000);
     return () => clearInterval(t);
-  }, []);
+  }, [user?.id]));
 
   const fetchConversations = async () => {
     try {
@@ -110,6 +112,8 @@ export default function RelativeMessagesScreen({ navigation }) {
       <TouchableOpacity
         onPress={() => {
           setViewedIds(prev => new Set([...prev, item.id]));
+          setConversations(prev => prev.map(c => c.id === item.id ? { ...c, unread_count: 0 } : c));
+          messagesAPI.markAllReadFrom(user.id, item.id).catch(() => {});
           navigation.navigate('ChatScreen', { contactId: item.id || item.user_id, contactName: item.name || item.full_name });
         }}
         activeOpacity={0.8}

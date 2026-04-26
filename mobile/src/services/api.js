@@ -72,6 +72,7 @@ export const messagesAPI = {
     api.get(`/messages/conversation/${userA}/${userB}`),
   getUserConversations: userId => api.get(`/messages/user/${userId}/conversations`),
   markRead: messageId => api.patch(`/messages/read/${messageId}`),
+  markAllReadFrom: (userId, contactId) => api.patch(`/messages/read-all/${userId}/${contactId}`),
   editMessage: data => api.patch('/messages/edit', data),
   deleteMessage: id => api.delete(`/messages/${id}`),
 };

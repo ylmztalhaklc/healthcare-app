@@ -83,6 +83,18 @@ def mark_read(message_id: int, db: Session = Depends(get_db)):
     return msg
 
 
+@router.patch("/read-all/{user_id}/{contact_id}")
+def mark_all_read_from(user_id: int, contact_id: int, db: Session = Depends(get_db)):
+    db.query(Message).filter(
+        Message.sender_id == contact_id,
+        Message.receiver_id == user_id,
+        Message.is_read == False,
+        Message.is_deleted == False,
+    ).update({"is_read": True})
+    db.commit()
+    return {"detail": "Tüm mesajlar okundu olarak işaretlendi."}
+
+
 @router.patch("/edit", response_model=MessageOut)
 def edit_message(body: MessageEdit, db: Session = Depends(get_db)):
     msg = db.query(Message).filter(Message.id == body.message_id).first()

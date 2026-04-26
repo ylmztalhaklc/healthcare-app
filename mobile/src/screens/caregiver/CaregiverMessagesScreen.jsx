@@ -1,7 +1,8 @@
-﻿import React, { useState, useContext, useEffect, useRef } from 'react';
+﻿import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { messagesAPI, usersAPI, notificationsAPI } from '../../services/api';
@@ -30,7 +31,8 @@ export default function CaregiverMessagesScreen({ navigation }) {
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    fetchConversations();
     const fetchUnread = async () => {
       try {
         const res = await notificationsAPI.getAll(user?.id);
@@ -41,7 +43,7 @@ export default function CaregiverMessagesScreen({ navigation }) {
     fetchUnread();
     const t = setInterval(fetchUnread, 30000);
     return () => clearInterval(t);
-  }, []);
+  }, [user?.id]));
 
   const fetchConversations = async () => {
     try {
@@ -110,6 +112,8 @@ export default function CaregiverMessagesScreen({ navigation }) {
       <TouchableOpacity
         onPress={() => {
           setViewedIds(prev => new Set([...prev, item.id]));
+          setConversations(prev => prev.map(c => c.id === item.id ? { ...c, unread_count: 0 } : c));
+          messagesAPI.markAllReadFrom(user.id, item.id).catch(() => {});
           navigation.navigate('ChatScreen', { contactId: item.id || item.user_id, contactName: item.name || item.full_name });
         }}
         activeOpacity={0.8}
@@ -265,6 +269,8 @@ const s = StyleSheet.create({
   headerName: { fontSize: 16, fontWeight: '700' },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  badgeTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
   menuOverlay: { flex: 1 },
   userMenu: { position: 'absolute', top: 56, right: 16, borderRadius: 12, borderWidth: 1, minWidth: 140, overflow: 'hidden' },
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },

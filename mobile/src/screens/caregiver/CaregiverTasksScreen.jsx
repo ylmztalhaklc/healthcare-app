@@ -1,15 +1,16 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, Alert,
   TouchableOpacity, Modal, TextInput, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { tasksAPI, notificationsAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
-const DAYS_TR = ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'];
+const DAYS_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
 
 function getStatusColor(status, colors) {
   switch (status) {
@@ -29,7 +30,7 @@ function getChipBg(status) {
 }
 function getStatusLabel(status) {
   switch (status) {
-    case 'tamamlandi': return 'Tamamlandi';
+    case 'tamamlandi': return 'Tamamlandı';
     case 'sorun_var': return 'Sorun Var';
     case 'devam_ediyor': return 'Devam Ediyor';
     default: return 'Bekliyor';
@@ -78,7 +79,7 @@ export default function CaregiverTasksScreen({ navigation }) {
       const res = await tasksAPI.getCaregiverTasks(user?.id, dateStr);
       setTasks(Array.isArray(res.data) ? res.data : []);
     } catch {
-      Alert.alert('Hata', 'Gorevler yuklenirken hata olustu.');
+      Alert.alert('Hata', 'Görevler yüklenirken hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -92,18 +93,25 @@ export default function CaregiverTasksScreen({ navigation }) {
     } catch {}
   };
 
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
+  useFocusEffect(useCallback(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsAPI.getAll(user?.id);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setUnreadCount(arr.filter(n => !n.is_read).length);
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]));
 
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
       await tasksAPI.updateStatus({ task_id: taskId, user_id: user?.id, status: newStatus });
       fetchTasks();
     } catch {
-      Alert.alert('Hata', 'Gorev durumu guncellenemedi.');
+      Alert.alert('Hata', 'Görev durumu güncellenemedi.');
     }
   };
 
@@ -116,7 +124,7 @@ export default function CaregiverTasksScreen({ navigation }) {
 
   const submitProblem = async () => {
     if (!problemText.trim()) {
-      Alert.alert('Hata', 'Lutfen sorun aciklamasi yazin.');
+      Alert.alert('Hata', 'Lütfen sorun açıklaması yazın.');
       return;
     }
     setProblemLoading(true);
@@ -144,7 +152,7 @@ export default function CaregiverTasksScreen({ navigation }) {
       setShowCompleteModal(false);
       fetchTasks();
     } catch {
-      Alert.alert('Hata', 'Gorev tamamlanamadi.');
+      Alert.alert('Hata', 'Görev tamamlanamadı.');
     } finally {
       setCompleteLoading(false);
     }
@@ -191,7 +199,7 @@ export default function CaregiverTasksScreen({ navigation }) {
                   onPress={() => updateTaskStatus(item.id, 'devam_ediyor')}
                 >
                   <Ionicons name="play-circle-outline" size={13} color={colors.primary} />
-                  <Text style={[s.actionBtnText, { color: colors.primary }]}>Baslatildi</Text>
+                  <Text style={[s.actionBtnText, { color: colors.primary }]}>Başlatıldı</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -206,7 +214,7 @@ export default function CaregiverTasksScreen({ navigation }) {
                 onPress={() => openCompleteModal(item.id)}
               >
                 <Ionicons name="checkmark-circle-outline" size={13} color={colors.success} />
-                <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamlandi</Text>
+                  <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamlandı</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -220,7 +228,7 @@ export default function CaregiverTasksScreen({ navigation }) {
       <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>Merhaba,</Text>
-          <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Bakici'}</Text>
+          <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Bakıcı'}</Text>
         </View>
         <View style={s.headerRight}>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
@@ -244,7 +252,7 @@ export default function CaregiverTasksScreen({ navigation }) {
         <TouchableOpacity style={s.menuOverlay} onPress={() => setShowUserMenu(false)} activeOpacity={1}>
           <View style={[s.userMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TouchableOpacity style={s.menuItem} onPress={() => { setShowUserMenu(false); logout(); }}>
-              <Text style={{ fontSize: 13, color: colors.error }}>Cikis Yap</Text>
+              <Text style={{ fontSize: 13, color: colors.error }}>Çıkış Yap</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -282,7 +290,7 @@ export default function CaregiverTasksScreen({ navigation }) {
         <View style={[s.progBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={s.progTop}>
             <View>
-              <Text style={[s.progLabel, { color: colors.textSecondary }]}>Tamamlanan Gorevler</Text>
+              <Text style={[s.progLabel, { color: colors.textSecondary }]}>Tamamlanan Görevler</Text>
               <Text style={[s.progValue, { color: colors.primary }]}>
                 {completedCount}
                 <Text style={[s.progTotal, { color: colors.textSecondary }]}>/{tasks.length}</Text>
@@ -307,7 +315,7 @@ export default function CaregiverTasksScreen({ navigation }) {
           ListEmptyComponent={
             <View style={s.emptyWrap}>
               <Ionicons name="clipboard-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
-              <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bu tarihte gorev bulunmuyor.</Text>
+              <Text style={[s.emptyText, { color: colors.textSecondary }]}>Bu tarihte görev bulunmuyor.</Text>
             </View>
           }
         />
@@ -320,30 +328,30 @@ export default function CaregiverTasksScreen({ navigation }) {
               <Ionicons name="warning" size={20} color={colors.error} />
               <Text style={[s.popupTitle, { color: colors.error }]}>Sorun Bildir</Text>
             </View>
-            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>SORUN ACIKLAMASI *</Text>
+            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>SORUN AÇIKLAMASI *</Text>
             <TextInput
               style={[s.popupInput, { backgroundColor: colors.surface2, borderColor: colors.border, color: colors.textPrimary }]}
-              placeholder="Sorunu kisaca aciklayin..."
+              placeholder="Sorunu kısaca açıklayın..."
               placeholderTextColor={colors.textMuted}
               value={problemText}
               onChangeText={setProblemText}
               multiline
               numberOfLines={4}
             />
-            <Text style={[s.popupLabel, { color: colors.textSecondary, marginTop: 10 }]}>FOTOGRAF (ISTEGE BAGLI)</Text>
+            <Text style={[s.popupLabel, { color: colors.textSecondary, marginTop: 10 }]}>FOTOĞRAF (İSTEĞE BAĞLI)</Text>
             <TouchableOpacity
               style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: problemPhoto ? colors.error : colors.border }]}
-              onPress={() => Alert.alert('Bilgi', 'Fotograf yukleme backend entegrasyonu yakin zamanda eklenecek.')}
+              onPress={() => Alert.alert('Bilgi', 'Fotoğraf yükleme yakın zamanda eklenecek.')}
             >
               <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotograf Ekle</Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotoğraf Ekle</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
                 style={[s.popupBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
                 onPress={() => setShowProblemModal(false)}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Iptal</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.popupBtn, { backgroundColor: colors.error, opacity: problemLoading ? 0.7 : 1 }]}
@@ -352,7 +360,7 @@ export default function CaregiverTasksScreen({ navigation }) {
               >
                 {problemLoading
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Gonder</Text>
+                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Gönder</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -365,22 +373,21 @@ export default function CaregiverTasksScreen({ navigation }) {
           <View style={[s.centeredModal, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-              <Text style={[s.popupTitle, { color: colors.success }]}>Gorevi Tamamla</Text>
+              <Text style={[s.popupTitle, { color: colors.success }]}>Görevi Tamamla</Text>
             </View>
-            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>FOTOGRAF (ISTEGE BAGLI)</Text>
+            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>FOTOĞRAF (İSTEĞE BAĞLI)</Text>
             <TouchableOpacity
               style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: completePhoto ? colors.success : colors.border }]}
-              onPress={() => Alert.alert('Bilgi', 'Fotograf yukleme backend entegrasyonu yakin zamanda eklenecek.')}
-            >
+              onPress={() => Alert.alert('Bilgi', 'Fotoğraf yükleme yakın zamanda eklenecek.')}>
               <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Kanit Fotografi Ekle</Text>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Kanıt Fotoğrafı Ekle</Text>
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
                 style={[s.popupBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
                 onPress={() => setShowCompleteModal(false)}
               >
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>Iptal</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.popupBtn, { backgroundColor: colors.success, opacity: completeLoading ? 0.7 : 1 }]}
@@ -389,7 +396,7 @@ export default function CaregiverTasksScreen({ navigation }) {
               >
                 {completeLoading
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Tamamlandi</Text>
+                  : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Tamamlandı</Text>
                 }
               </TouchableOpacity>
             </View>

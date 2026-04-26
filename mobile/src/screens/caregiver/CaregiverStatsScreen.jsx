@@ -1,4 +1,5 @@
-﻿import React, { useState, useContext, useEffect } from 'react';
+﻿import React, { useState, useContext, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +16,10 @@ export default function CaregiverStatsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const weekBars = [55, 70, 85, 60, 90, 45, 65];
 
   useEffect(() => { fetchStats(); }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const fetchUnread = async () => {
       try {
         const res = await notificationsAPI.getAll(user?.id);
@@ -30,7 +30,7 @@ export default function CaregiverStatsScreen({ navigation }) {
     fetchUnread();
     const t = setInterval(fetchUnread, 30000);
     return () => clearInterval(t);
-  }, []);
+  }, [user?.id]));
 
   const fetchStats = async () => {
     try {
@@ -104,17 +104,26 @@ export default function CaregiverStatsScreen({ navigation }) {
               <Text style={[s.chartTitle, { color: colors.textPrimary }]}>Haftalık Performans</Text>
             </View>
             <View style={s.barChart}>
-              {weekBars.map((h, i) => (
-                <View key={i} style={s.barCol}>
-                  <View style={[s.barFill, {
-                    height: h,
-                    backgroundColor: i === 4 ? colors.primary : colors.primarySoft,
-                    borderTopWidth: 2, borderTopColor: colors.primary,
-                    borderTopLeftRadius: 4, borderTopRightRadius: 4,
-                  }]} />
-                  <Text style={[s.barDay, { color: colors.textSecondary }]}>{DAYS[i]}</Text>
-                </View>
-              ))}
+              {(() => {
+                const wData = stats?.weekly_data || DAYS.map(() => ({ rate: 0 }));
+                const maxR = Math.max(...wData.map(x => x.rate), 1);
+                const todayDow = (new Date().getDay() + 6) % 7;
+                return wData.map((d, i) => {
+                  const barH = Math.max(4, Math.round((d.rate / maxR) * 78));
+                  const isToday = i === todayDow;
+                  return (
+                    <View key={i} style={s.barCol}>
+                      <View style={[s.barFill, {
+                        height: barH,
+                        backgroundColor: isToday ? colors.primary : (d.rate > 0 ? colors.primarySoft : colors.surface2),
+                        borderTopLeftRadius: 4,
+                        borderTopRightRadius: 4,
+                      }]} />
+                      <Text style={[s.barDay, { color: isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? '700' : '500' }]}>{DAYS[i]}</Text>
+                    </View>
+                  );
+                });
+              })()}
             </View>
           </View>
 
@@ -154,7 +163,7 @@ const s = StyleSheet.create({
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
   content: { paddingHorizontal: 16, paddingVertical: 16, paddingBottom: 40 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  statTile: { width: '47%', borderRadius: 14, borderWidth: 1, padding: 16 },
+  statTile: { width: '47%', borderRadius: 14, borderWidth: 1, padding: 16, alignItems: 'flex-start' },
   tileIcon: { fontSize: 24, marginBottom: 8 },
   tileNum: { fontSize: 26, fontWeight: '800', lineHeight: 30 },
   tileLbl: { fontSize: 10, fontWeight: '600', marginTop: 4 },
