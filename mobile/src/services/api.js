@@ -56,6 +56,16 @@ export const tasksAPI = {
   deleteTemplate: templateId => api.delete(`/tasks/template/${templateId}`),
   getRelativeStats: userId => api.get(`/tasks/stats/relative/${userId}`),
   getCaregiverStats: userId => api.get(`/tasks/stats/caregiver/${userId}`),
+  uploadTaskPhoto: async (taskId, photoUri) => {
+    const filename = photoUri.split('/').pop() || `photo_${taskId}.jpg`;
+    const ext = filename.split('.').pop().toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    const formData = new FormData();
+    formData.append('file', { uri: photoUri, name: filename, type: mimeType });
+    return api.post(`/tasks/${taskId}/photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ─── USERS ────────────────────────────────────────────────────
@@ -72,9 +82,20 @@ export const messagesAPI = {
     api.get(`/messages/conversation/${userA}/${userB}`),
   getUserConversations: userId => api.get(`/messages/user/${userId}/conversations`),
   markRead: messageId => api.patch(`/messages/read/${messageId}`),
-  markAllReadFrom: (userId, contactId) => api.patch(`/messages/read-all/${userId}/${contactId}`),
+  markAllReadFrom: (receiverId, senderId) =>
+    api.patch(`/messages/read-all/${receiverId}/${senderId}`),
   editMessage: data => api.patch('/messages/edit', data),
   deleteMessage: id => api.delete(`/messages/${id}`),
+  uploadAttachment: async (messageId, photoUri) => {
+    const filename = photoUri.split('/').pop() || `photo_${messageId}.jpg`;
+    const ext = filename.split('.').pop().toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    const formData = new FormData();
+    formData.append('file', { uri: photoUri, name: filename, type: mimeType });
+    return api.post(`/messages/${messageId}/attachment`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────

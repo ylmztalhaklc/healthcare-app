@@ -38,3 +38,12 @@ export const PROBLEM_SEVERITY_LABELS = {
   orta: 'Orta',
   ciddi: 'Ciddi',
 };
+
+// Week day short names
+// DAYS_SUN_FIRST: index matches JS Date.getDay() (0=Sun)
+export const DAYS_SUN_FIRST = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+// DAYS_MON_FIRST: Monday-indexed (0=Mon), used in weekly bar charts
+export const DAYS_MON_FIRST = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
+// Turkish month names
+export const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];

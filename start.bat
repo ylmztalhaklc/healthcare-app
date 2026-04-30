@@ -24,22 +24,15 @@ echo     Backend hazır.
 echo.
 
 :: --- Expo / Emulator ---
-echo [2/2] Expo baslatiliyor (Android emulator)...
+echo [2/2] Expo başlatılıyor (Android emulator)...
 cd /d "%~dp0mobile"
-start "Expo - Android Emulator" cmd /k "npx expo start --android --clear"
-
-:: Emulator boot bekleniyor, sonra saat dilimi Istanbul olarak ayarlaniyor
-echo     Emulator aciliyor, saat dilimi ayari icin 30 saniye bekleniyor...
-timeout /t 30 /nobreak >nul
-adb shell settings put global time_zone Europe/Istanbul >nul 2>&1
-adb shell am broadcast -a android.intent.action.TIME_SET >nul 2>&1
-echo     Saat dilimi Europe/Istanbul olarak ayarlandi.
+start "Expo - Android Emulator" cmd /k "set NODE_TLS_REJECT_UNAUTHORIZED=0 && npx expo start --android --clear"
 
 echo.
 echo ================================================
-echo   Her iki pencere de acildi.
-echo   Emulator backend'e 10.0.2.2:8000 uzerinden ulasir.
-echo   Kapatmak icin her iki pencereyi ayri ayri kapatin.
+echo   Her iki pencere de açıldı.
+echo   Emulator backend'e 10.0.2.2:8000 üzerinden ulaşır.
+echo   Kapatmak için her iki pencereyi ayrı ayrı kapatın.
 echo ================================================
 echo.
 pause

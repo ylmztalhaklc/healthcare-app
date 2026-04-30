@@ -16,5 +16,3 @@ mobile/dist/
 # OS
 .DS_Store
 Thumbs.db
-
-backend/healthcare.db

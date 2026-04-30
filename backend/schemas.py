@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -123,6 +123,17 @@ class MessageEdit(BaseModel):
     message_id: int
     new_content: str
 
+class MessageAttachmentOut(BaseModel):
+    id: int
+    message_id: int
+    file_type: str
+    file_path: str
+    file_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class MessageOut(BaseModel):
     id: int
     sender_id: int
@@ -132,6 +143,7 @@ class MessageOut(BaseModel):
     is_edited: bool
     is_deleted: bool
     sent_at: datetime
+    attachments: List[MessageAttachmentOut] = []
 
     class Config:
         from_attributes = True
@@ -139,13 +151,25 @@ class MessageOut(BaseModel):
 
 # ─── STATISTICS ───────────────────────────────────────────────
 
+class WeeklyPoint(BaseModel):
+    week: int
+    count: int
+
+class DailyPerf(BaseModel):
+    day: int
+    total: int
+    completed: int
+    rate: float
+
 class RelativeStats(BaseModel):
     total_tasks: int
     completed_tasks: int
     active_tasks: int
     completion_rate: float
     problems_reported: int
+    ciddi_problems: int
     problems_resolved: int
+    problem_trend: List[WeeklyPoint] = []
 
 class CaregiverStats(BaseModel):
     total_assigned: int
@@ -153,3 +177,6 @@ class CaregiverStats(BaseModel):
     completion_rate: float
     avg_rating: float
     tasks_today: int
+    problems_reported: int
+    ciddi_problems: int
+    weekly_data: List[DailyPerf] = []

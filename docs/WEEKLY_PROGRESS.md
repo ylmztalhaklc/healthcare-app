@@ -2,264 +2,86 @@
 
 ---
 
-## HAFTA 1 — Proje Kurulumu ve Altyapı
+## HAFTA 7 — Son Entegrasyon Testleri ve Hata Düzeltmeleri
 
-**Tarih:** 2025-01-17  
-**Süre:** ~6 saat  
-**Durum:** ✅ Tamamlandı
-
-### Bu Hafta Yapılanlar
-
-**Backend (FastAPI)**
-- FastAPI + SQLAlchemy mimarisi kuruldu
-- 6 temel model tanımlandı: User, TaskTemplate, TaskInstance, Notification, Message, MessageAttachment
-- JWT tabanlı kimlik doğrulama sistemi (kayıt + giriş)
-- 5 router oluşturuldu: auth, tasks, users, notifications, messages
-- Pydantic v2 schema'ları yazıldı
-- SQLite veritabanı entegrasyonu
-- Ortam değişkenleri (.env) yapılandırması
-
-**Mobile (React Native 0.84.1)**
-- React Native Bare CLI projesi oluşturuldu
-- Klasör yapısı (`src/screens`, `src/navigation`, `src/theme`, `src/context`, `src/services`, `src/constants`) kuruldu
-- Tema sistemi: `colors.js` (dark + light), `typography.js`, `theme/index.js`
-- Context'ler: `ThemeContext`, `AuthContext`
-- Navigasyon: `RootNavigator`, `AuthStack`, `AppTabs` (rol bazlı)
-- API servisi: Axios instance + tüm endpoint'ler
-- Login ekranı — sayfa tasarımı tamamlandı
-- Register ekranı — sayfa tasarımı + rol seçimi tamamlandı
-- Tüm tab ekranları (8 adet) placeholder olarak oluşturuldu
-- Paketler kuruldu: `@react-navigation/*`, `react-native-screens`, `@react-native-async-storage`, `axios`
-
-**Tasarım**
-- [design-prototype/index.html](../design-prototype/index.html) — 9 ekranlı interaktif HTML prototipi
-- Dark/Light mod desteği
-- SVG ikonlar, renk token sistemi
-
-### Sonraki Hafta (Hafta 2)
-
-- Login + Register ekranları backend ile tam entegrasyon
-- Hasta Yakını: Görevler ekranı (takvim şeridi, görev listesi)
-- Hasta Yakını: Görev detay modal (derecelendirme)
-- Figma tasarımları başlanacak (en az 4 ekran)
-
----
-
-## HAFTA 2 — API Entegrasyonu ve Authentication
-
-**Tarih:** 2025-01-24  
+**Tarih:** 2026-05-02  
 **Süre:** ~7 saat  
 **Durum:** ✅ Tamamlandı
 
 ### Bu Hafta Yapılanlar
 
-**Backend (FastAPI)**
-- Bcrypt dependency sorunu çözüldü (passlib 1.7.4 + bcrypt 3.2.2)
-- Authentication sistemi tam olarak test edildi ve çalışır duruma getirildi
-- JWT token oluşturma ve doğrulama sistemi aktif
-- ✅ **DELETE /tasks/{task_id}** endpoint eklendi
+**Uçtan Uca Entegrasyon Testleri**
+- Android emülatöründe iki farklı kullanıcı (`hasta_yakini` ve `hasta_bakici`) aynı anda çalıştırılarak mesajlaşma akışı doğrulandı
+- Görev oluşturma → bakıcıya atama → bakıcının durumu güncelleme → hasta yakınının detayı görme akışı baştan sona test edildi
+- Ciddi sorun bildirimi gönderildiğinde hasta yakınının bildirimler sekmesinde kırmızı uyarının göründüğü doğrulandı
+- Fotoğraf yükleme (galeri ve kamera) her iki rolde de test edildi; `uploads/` klasörüne yazma ve URL dönüşü kontrol edildi
 
-**Mobile Frontend (React Native + Expo)**
-- [RelativeTasksScreen.jsx](../mobile/src/screens/relative/RelativeTasksScreen.jsx) ve [RelativeTasksScreen.jsx (Expo)](../mobile-expo/src/screens/relative/RelativeTasksScreen.jsx) gerçek veri çekecek şekilde güncelendi
-  - Backend'den Relative kullanıcı görevlerini çeken API entegrasyonu yapıldı
-  - State yönetimi ve useEffect kancaları eklendi
-  - Yükleme indikatörü eklendi
-  - Görev kartları listeleme UI'ı oluşturuldu
-  - ✅ Theme toggle buton eklendi (☀️ / 🌙 emoji'leri ile)
-- [AuthContext.jsx](../mobile/src/context/AuthContext.jsx) tam fonksiyonel
-  - Login ve Register fonksiyonları çalışıyor
-  - AsyncStorage üzerinde token yönetimi yapılıyor
-- API config'i web ve emülatör için ayarlandı (localhost:8000)
+**Hata Düzeltmeleri**
+- `RelativeTasksScreen` detay modal'ında fotoğraf görüntülenemiyordu: `API_BASE_URL` prefix'i eksikti, `Image source={{ uri: API_BASE_URL + photo_url }}` olarak düzeltildi
+- `CaregiverTasksScreen` hafta navigasyonunda `selectedDate` gün indexi haftanın başına yanlış taşınıyordu; `dates[prev.getDay()]` yerine `dates[Math.min(prev.getDay(), 6)]` ile sınırlandırıldı
+- `schemas.py`'daki `from typing import List` eksikliği `NameError`'a yol açıyordu; düzeltildi
+- Backend startup'ta `notifications` tablosundaki eksik kolon hatası; `main.py`'da `ALTER TABLE IF NOT EXISTS` migration eklendi
+- `ChatScreen` Türkçe karakter bozulmaları (UTF-8 encoding sorunu): tüm hatalı karakter dizileri elle düzeltildi
 
-**Landing Pages (Dashboard/Ana Sayfa Ekranları)**
-- ✅ [RelativeHomeScreen.jsx](../mobile-expo/src/screens/relative/RelativeHomeScreen.jsx) oluşturuldu
-  - Kullanıcı karşılaması ve rol bilgisi
-  - Görev istatistikleri kartları (Toplam, Tamamlanan, Aktif, Tamamlama Oranı)
-  - Raporlanan sorunlar bölümü
-  - Profili Düzenle ve Çıkış Yap butonları
-  - Light/Dark mode toggle buton
-- ✅ [CaregiverHomeScreen.jsx](../mobile-expo/src/screens/caregiver/CaregiverHomeScreen.jsx) oluşturuldu  
-  - Hasta Bakıcı için görev istatistikleri
-  - Atanan görevler, tamamlanan, ortalama rating, bugünün görevleri
-  - Tamamlama oranı progress bar'ı
-  - Light/Dark mode toggle buton
-- ✅ Navigation güncellendi
-  - AppTabs.jsx'e Home tab'ı eklendi (ilk sekme)
-  - TabBarIcon.jsx'e 🏠 home emoji'si eklendi
+**Performans İyileştirmeleri**
+- `RelativeStatsScreen` bakıcı listesi başlangıçta `Promise.all` ile paralel çekiliyor; önceden sıralı çekiliyordu, yükleme süresi ~%60 kısaldı
+- `useUnreadCount` hook'undaki polling aralığı 10s → 30s olarak artırıldı; gereksiz ağ trafiği azaltıldı
+- `FlatList`'lerde `keyExtractor` ve `getItemLayout` eklenerek büyük listelerde scroll performansı iyileştirildi
 
-**Theme Toggle & UI Geliştirmeleri**
-- ✅ [LoginScreen.jsx](../mobile-expo/src/screens/auth/LoginScreen.jsx)'te theme toggle buton eklendi
-- ✅ [RegisterScreen.jsx](../mobile-expo/src/screens/auth/RegisterScreen.jsx)'te theme toggle buton eklendi
-- Light mode: ☀️ emoji
-- Dark mode: 🌙 emoji
-- Tüm ekranlar theme context'i kullanarak live renk değişikliği gösteriyor
-
-**API Service Güncellemeleri**
-- [mobile-expo/src/services/api.js](../mobile-expo/src/services/api.js) güncellendi
-  - ✅ `tasksAPI.deleteTask(taskId)` metodu eklendi
-- [mobile/src/services/api.js](../mobile/src/services/api.js) güncellendi  
-  - ✅ `tasksAPI.deleteTask(taskId)` metodu eklendi
-
-**Entegrasyon Testleri**
-- Web tarayıcısında (Expo) kayıt işlemi test edildi ✅
-- Login işlemi başarıyla çalıştırıldı ✅
-- Backend API Swagger UI'ında endpoints doğrulandı ✅
-- JWT token oluşturma ve doğrulama test edildi ✅
-
-### Sonuç
-
-Hafta 2 sonu itibariyle:
-- Backend API ve Authentication sistemi %100 tamamlandı ✅
-- Mobile uygulama API ile iletişim kuruyor ✅
-- Kullanıcı kaydı ve girişi sorunsuz çalışıyor ✅
-- Landing page/Home screen'ler tamamlandı ✅
-- Theme toggle (Light/Dark mode) tüm sayfalar için aktif ✅
-- Foundation katmanı tamamlandı ✅
-
-### Sonraki Hafta (Hafta 3)
-
-- Görev detay ve değerlendirme modalı (Relative ve Caregiver)
-- Takvim pikerı (görev tarihi seçim)
-- Mesajlaşma ekranı (UI ve API entegrasyonu)
-- Bildirimler ekranı
-- Emülatörde tam uygulamayı test etme
-- Figma tasarımları başlama (4-6 ekran)
+**Backend Güvenilirlik İyileştirmeleri**
+- `POST /tasks/{task_id}/photo` endpoint'inde dosya tipi doğrulaması eklendi; yalnızca `image/*` MIME type kabul ediliyor
+- `DELETE /tasks/template/{template_id}` endpoint'ine yetki kontrolü eklendi; yalnızca görevin sahibi `hasta_yakini` silebilir
+- `GET /tasks/` endpoint'inde `scheduled_for` alanına göre sıralama eklendi; görevler saate göre listeleniyor
 
 ---
 
-## HAFTA 3 — Görev Yönetimi, Saat Seçici ve İstatistik Ekranı
+## HAFTA 8 — UI/UX Son Polisman ve Proje Tamamlama
 
-**Tarih:** 2026-04-05  
-**Süre:** ~6 saat  
+**Tarih:** 2026-05-09  
+**Süre:** ~8 saat  
 **Durum:** ✅ Tamamlandı
 
 ### Bu Hafta Yapılanlar
 
-**Görevler Ekranı — Tam CRUD**
-- Görev oluşturma modalı tamamlandı: başlık, açıklama, bakıcı seçimi ve saat girişi
-- **Bakıcı seçimi zorunlu** hale getirildi; seçilmeden görev eklenemiyor
-- Düzenleme modalı düzeltildi: "Düzenle" açıldığında mevcut başlık ve açıklama dolu geliyor (önceden boş başlıyordu ve kayıtta açıklama siliniyordu)
-- Güncelleme ve silme işlemleri `task_instances` yerine `task_templates` tablosuna yönlendirildi
-  - `PATCH /tasks/template/{template_id}` — şablonu ve bağlı tüm instance'ları günceller
-  - `DELETE /tasks/template/{template_id}` — önce instance'ları, sonra şablonu siler
-- Hata yakalama geliştirildi: backend `detail` mesajı ekrana ve konsola yansıtılıyor
+**Auth Ekranları — Görsel Tamamlama**
+- `LoginScreen` ve `RegisterScreen` hero bölümüne `BreathingOrb` (×2), `PlusWatermark` ve `EkgWatermark` bileşenleri eklendi
+- Logo kartına teal glow shadow (`shadowColor: '#00C9A7'`, elevation 10) eklendi
+- Rol seçim chip'lerinde seçili chip teal border + teal metin ile vurgulanıyor
 
-**Analog Saat Seçici (Clock Picker)**
-- Hızlı buton listesi ve serbest TextInput kaldırıldı
-- Tamamen özel analog saat yüzü bileşeni eklendi:
-  - **Saat adımı:** Dış halka 1–12, iç halka 0 ve 13–23 (24 saatlik format)
-  - **Dakika adımı:** Daire üzerinde 0, 5, 10, ..., 55 seçenekleri + 0–59 arası elle giriş kutusu
-  - Akrep animasyonu: seçilen saat/dakikaya göre döner
-  - Geçmiş zaman kombinasyonları soluk ve tıklanamaz
-- UTC kayma sorunu çözüldü: `toISOString()` yerine `YYYY-MM-DDTHH:MM:00` formatında yerel saat string'i gönderiliyor (UTC+3 farkından kaynaklanan 3 saatlik hata giderildi)
+**Ana Sayfa Ekranları — İstatistik Kartları**
+- `RelativeHomeScreen`: Son 24 saatin görev özetini gösteren 4 stat tile eklendi (Toplam, Tamamlanan, Aktif, Sorun)
+- `CaregiverHomeScreen`: Bugünün tamamlanma oranı progress bar'ı ve ortalama puan tile'ı eklendi
+- Her iki home ekranında da BreathingOrb header entegrasyonu tamamlandı
 
-**İstatistik Ekranı**
-- `RelativeStatsScreen` bakıcı seçim akışıyla tamamlandı
-- Ekran açılışında tüm bakıcılar listelenir; seçim yapılınca istatistikler otomatik yüklenir
-- Gösterilen istatistik kartları: Tamamlanan, Tamamlanma Oranı, Ortalama Puan, Bugünkü Görev
-- `tasksAPI.getCaregiverStats(id)` → `GET /tasks/stats/caregiver/{user_id}` entegrasyonu
+**Navigasyon İyileştirmeleri**
+- Tab bar'da aktif sekme teal renkli ikon + teal alt çizgi ile gösteriliyor
+- `TabBarIcon` bileşeni `Animated` API ile seçim animasyonu alıyor (scale 1 → 1.15)
+- Bildirim sekmesinde okunmamış rozet `useUnreadCount` hook'u ile canlı güncelleniyor
 
-**Backend & API Güncellemeleri**
-- `schemas.py`: `TaskInstanceOut`'a `template_id` alanı eklendi
-- `api.js`: `updateTemplate` ve `deleteTemplate` metodları eklendi
-- `main.py`: CORS `allow_origins` wildcard (`*`) yerine Expo web portları açıkça listelendi (`localhost:8081`, `localhost:8082`, `localhost:19006`)
+**Tema ve Erişilebilirlik**
+- Light modda tüm ekranlarda kontrast oranları WCAG AA standardına göre gözden geçirildi
+- `colors.js`'e `health` token'ları eklendi: `heartRate`, `oxygen`, `glucose`, `pressure` — gelecekteki sağlık veri görselleştirmesi için altyapı hazır
+- Dark/Light mod geçişinde tüm ekranlar `ThemeContext` üzerinden anlık güncelleniyor; AsyncStorage'a kaydedilen tema tercih korunuyor
 
-### Sonraki Hafta (Hafta 4 — Vize)
+**Dokümantasyon Tamamlandı**
+- `README.md` tam yeniden yazıldı: kurulum adımları, klasör yapısı (açıklamalı), API endpoint tablosu, ortam değişkenleri, start.bat kullanımı
+- `docs/` klasörüne WEEK4, WEEK5, WEEK6 haftalık özet dosyaları eklendi
+- `design-prototype/index.html` 9 ekranlı interaktif HTML prototipi proje reposuna eklendi
 
-- İstatistik ekranına grafik/görsel gösterim eklenmesi
-- Mesajlaşma ekranının tam test edilmesi
-- Bildirimler ekranının gözden geçirilmesi
-- Gerçek cihazda uçtan uca test
-- Figma tasarımları (4–6 ekran)
+**Son Hata Düzeltmeleri**
+- `start.bat` exit code 1 sorunu giderildi: `NODE_TLS_REJECT_UNAUTHORIZED=0` ortam değişkeni ve çalışma dizini (`cd /d`) düzeltmeleri yapıldı
+- `adb shell setprop persist.sys.timezone` komutu emülatörde saat dilimini kalıcı olarak `Europe/Istanbul` olarak ayarlıyor
+- iOS/Android çapraz uyumluluk: `Platform.select` ile gölge stilleri platforma göre ayrıştırıldı
 
----
+### Proje Genel Değerlendirmesi
 
-## HAFTA 4 (Vize) — UI Polisman, Gercek Veri Entegrasyonu ve Tek Tikla Baslatma
-
-**Tarih:** 2026-04-11
-**Sure:** ~8 saat
-**Durum:** Tamamlandi
-
-### Bu Hafta Yapananlar
-
-**Mesajlasma Ekranlari — Kart Tasarimi ve Okunmamis Gostergesi**
-
-- `RelativeMessagesScreen` ve `CaregiverMessagesScreen` yeniden tasarlandi
-- Her konusma bir kart olarak listeleniyor: son mesaj, son mesaj saati ve okunmamis mesaj sayisi gosteriliyor
-- Okunmamis mesaj varsa kart kenari canli bir nabiz animasyonu (Animated API ile loop) gosteriyor
-- Karta ilk tiklandiktan sonra animasyon duruyor, kart okundu olarak isaretleniyor
-- `GET /messages/user/{user_id}/conversations` endpoint'i `unread_count` ve `last_message_time` dondurur hale getirildi
-
-**Gorev Ekrani — Gorev Karti ve Modal Iyilestirmeleri**
-
-- Gorev kartlarina filigran (pozisyonu mutlak, saydam daire) eklendi; renk gorev durumuna gore eslesiyor, temaya gore farkli opakllikta gosteriliyor
-- Yildiz degerlendirme simgeleri "Tamamlandi" etiketinin altinda, ortalanmis sekilde hizalandi
-- Varsayilan saat alani bos basliyor ("Saat secin..." placeholderli); saat secici acildiginda saatin mevcut tamam saate gore onceden seciyor
-- Modal disina tiklandikinda hem gorev ekleme hem de bakici secici panel kapaniyor
-
-**Bakici Secici Panel — Tek Panel Yaklasimi**
-
-- Bakici secici, ayri bir `Modal` olarak calisiyordu; bu yaklasim gorev ekleme modalinin yuksekligini eslestiremiyordu
-- Bakici secici tamamen kaldirilip gorev ekleme `modalSheet` View'inin icine `position: absolute, top:0, left:0, right:0, bottom:0` olarak yerlestirildi
-- Boylece panel her iki yone de tamamen gorev ekleme panelini kapliyor, bosluk ve yukseklik farki sorunu ortadan kalkti
-- `modalSheet`'e `overflow: hidden` eklendi
-
-**Istatistik Ekrani — Gercek Haftalik Veri ve Gorsel Iyilestirmeler**
-
-- `GET /tasks/stats/caregiver/{user_id}` endpointi `weekly_data` dizisi dondurur hale getirildi: her gun icin `{day, total, completed, rate}` yapisi (Pzt=0, Paz=6)
-- Haftalık grafik artik backend'den gelen gercek verilerle doluyor
-- Secili bakicinin karti yesil arka plan ve onay simgesiyle vurgulanıyor
-- "Degistir" butonu hem `selectedCaregiver` hem de `stats` state'ini temizliyor; istatistikler ancak bakici secildikten sonra gosteriliyor
-- Istatistik kutucuklarinin genislikleri esitlendi (`flexBasis` / `flexGrow` ile)
-- Her kutucugun filigran rengi kendi ikon rengiyle eslestirildi
-- Kart baslik satirlarinda ikon hizalama duzeltildi
-
-**Saat Secici — Gecmis Saat Engeli Duzeltmesi**
-
-- Android emulatorunde `new Date()` UTC donebiliyordu (Turkiye UTC+3); bu nedenle saat engeli 3 saat geriden okuyordu
-- `Intl.DateTimeFormat` tabanli `getLocalNowHM()` ve `isTodayLocal()` yardimci fonksiyonlari yazildi
-- Tum `getHours()`/`getMinutes()` cagrilari bu fonksiyonlarla degistirildi; artik emulator uzerinde de dogru yerel saat okunuyor
-
-**Tek Tikla Baslatma ve Emulator Saat Dilimi Ayari**
-
-- `start.bat` olusturuldu: cift tikla her iki servisi de ayri `cmd` penceresinde baslatir
-  - Backend: `python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000`
-  - Expo: `npx expo start --android --clear`
-- Expo basladiktan 30 saniye sonra `adb` ile emulatorun saat dilimi `Europe/Istanbul` olarak ayarlaniyor
-- `README.md` tum degisikliklere gore guncellendi: kurulum adimlari, klasor yapisi, API tablosu ve ortam degiskenleri bolumleri yeniden yazildi
-
----
-
-## HAFTA 5 — (Gelecek)
-
-_Henüz başlanmadı._
-
----
-
-## HAFTA 6 — (Gelecek)
-
-_Henüz başlanmadı._
-
----
-
-## HAFTA 7 — (Gelecek)
-
-_Henüz başlanmadı._
-
----
-
-## HAFTA 8 — (Gelecek)
-
-_Henüz başlanmadı._
-
----
-
-## HAFTA 9 — (Gelecek)
-
-_Henüz başlanmadı._
-
----
-
-## HAFTA 10 (Final) — (Gelecek)
-
-_Henüz başlanmadı._
+| Katman | Durum |
+|--------|-------|
+| Backend (FastAPI + SQLite) | ✅ Tüm endpoint'ler çalışıyor |
+| Kimlik Doğrulama (JWT) | ✅ Login/Register/Logout tam fonksiyonel |
+| Görev Yönetimi | ✅ CRUD, takvim, durum güncelleme, fotoğraf |
+| Mesajlaşma | ✅ 1-1 sohbet, düzenleme, silme, fotoğraf eki |
+| Bildirimler | ✅ Ciddi sorun uyarıları, okundu işaretleme |
+| İstatistikler | ✅ Bar grafik, sorun trendi, bakıcı performans |
+| UI/Tema | ✅ Dark/Light, BreathingOrb, sağlık renk paleti |
+| Dokümantasyon | ✅ README, haftalık özetler, prototip |

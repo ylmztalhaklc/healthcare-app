@@ -1,13 +1,13 @@
 ﻿import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { tasksAPI, usersAPI, notificationsAPI } from '../../services/api';
+import { tasksAPI, usersAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-
-const DAYS_TR = ['Paz', 'Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt'];
-const MONTHS_TR = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+import { DAYS_SUN_FIRST, MONTHS_TR, API_BASE_URL } from '../../constants/config';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
+import BreathingOrb from '../../components/common/BreathingOrb';
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 const CLOCK_SIZE = 260;
@@ -116,7 +116,7 @@ export default function RelativeTasksScreen({ navigation }) {
   const [showCaregiverPicker, setShowCaregiverPicker] = useState(false);
 
   // Unread notification count
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useUnreadCount(user?.id);
 
   // Time picker
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -140,20 +140,6 @@ export default function RelativeTasksScreen({ navigation }) {
 
   useEffect(() => { fetchTasks(); }, [selectedDate]);
   useEffect(() => { if (showAddModal) fetchCaregivers(); }, [showAddModal]);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await notificationsAPI.getAll(user?.id);
-      const arr = Array.isArray(res.data) ? res.data : [];
-      setUnreadCount(arr.filter(n => !n.is_read).length);
-    } catch {}
-  };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -342,6 +328,12 @@ export default function RelativeTasksScreen({ navigation }) {
           <View style={[s.chip, { backgroundColor: cb }]}>
             <Text style={[s.chipText, { color: sc }]}>{getStatusLabel(item.status)}</Text>
           </View>
+          {item.problem_severity === 'ciddi' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+              <Ionicons name="warning" size={11} color={colors.error} />
+              <Text style={{ fontSize: 9, fontWeight: '800', color: colors.error }}>CİDDİ</Text>
+            </View>
+          )}
           {item.rating ? (
             <View style={{ flexDirection: 'row', gap: 1 }}>
               {Array.from({ length: item.rating }).map((_, i) => (
@@ -357,7 +349,8 @@ export default function RelativeTasksScreen({ navigation }) {
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
+        <BreathingOrb color={colors.primary} size={180} duration={4700} opacity={0.10} style={{ top: -70, right: -50 }} />
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>Merhaba,</Text>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Misafir'}</Text>
@@ -366,7 +359,7 @@ export default function RelativeTasksScreen({ navigation }) {
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
             <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => { fetchUnreadCount(); navigation.navigate('Notifications'); }}>
+          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
             <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
             {unreadCount > 0 && (
               <View style={s.badge}>
@@ -416,7 +409,7 @@ export default function RelativeTasksScreen({ navigation }) {
                 onPress={() => setSelectedDate(date)}
               >
                 <Text style={[s.dayName, { color: isSel ? '#fff' : colors.textSecondary }]}>
-                  {DAYS_TR[date.getDay()].substring(0, 2)}
+                  {DAYS_SUN_FIRST[date.getDay()].substring(0, 2)}
                 </Text>
                 <Text style={[s.dayNum, { color: isSel ? '#fff' : colors.textPrimary }]}>
                   {date.getDate()}
@@ -744,10 +737,6 @@ export default function RelativeTasksScreen({ navigation }) {
             <View style={[s.handle, { backgroundColor: colors.border }]} />
             <ScrollView showsVerticalScrollIndicator={false}>
 
-              <TouchableOpacity style={[s.photoPlaceholder, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-                <Text style={{ fontSize: 40 }}>📷</Text>
-                <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotograf Ekle</Text>
-              </TouchableOpacity>
 
               {/* Inline delete confirmation */}
               {showDeleteConfirm && (
@@ -825,9 +814,35 @@ export default function RelativeTasksScreen({ navigation }) {
                   )}
 
                   {selectedTask?.problem_message && (
-                    <View style={[s.problemBox, { backgroundColor: 'rgba(255,107,107,0.1)', borderColor: colors.error }]}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.error, marginBottom: 4 }}>Sorun Bildirimi</Text>
+                    <View style={[s.problemBox, {
+                      backgroundColor: selectedTask.problem_severity === 'ciddi' ? 'rgba(239,68,68,0.12)' : 'rgba(255,107,107,0.1)',
+                      borderColor: selectedTask.problem_severity === 'ciddi' ? '#EF4444' : colors.error,
+                      borderWidth: selectedTask.problem_severity === 'ciddi' ? 1.5 : 1,
+                    }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        {selectedTask.problem_severity === 'ciddi' && <Ionicons name="warning" size={14} color="#EF4444" />}
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.error }}>Sorun Bildirimi</Text>
+                        {selectedTask.problem_severity && (
+                          <View style={{
+                            backgroundColor: selectedTask.problem_severity === 'ciddi' ? '#EF4444' : selectedTask.problem_severity === 'orta' ? '#FB923C' : '#FBBF24',
+                            borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+                          }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: '#fff' }}>{selectedTask.problem_severity.toUpperCase()}</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={{ fontSize: 12, color: colors.error }}>{selectedTask.problem_message}</Text>
+                    </View>
+                  )}
+
+                  {selectedTask?.completion_photo_url && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>TAMAMLAMA FOTOĞRAFI</Text>
+                      <Image
+                        source={{ uri: `${API_BASE_URL}${selectedTask.completion_photo_url}` }}
+                        style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
+                        resizeMode="cover"
+                      />
                     </View>
                   )}
 

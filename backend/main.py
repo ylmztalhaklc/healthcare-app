@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -47,7 +49,16 @@ app.include_router(users.router)
 app.include_router(notifications.router)
 app.include_router(messages.router)
 
+# Serve uploaded photos
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 @app.get("/")
 def root():
     return {"status": "ok", "message": "HealthCare API çalışıyor."}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

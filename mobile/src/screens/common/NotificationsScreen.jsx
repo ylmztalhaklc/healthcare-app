@@ -1,12 +1,14 @@
-﻿import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationsAPI } from '../../services/api';
+import { getTimeStr } from '../../utils/helpers';
+import BreathingOrb from '../../components/common/BreathingOrb';
 
-export default function RelativeNotificationsScreen({ navigation }) {
+export default function NotificationsScreen({ navigation }) {
   const { user } = useContext(AuthContext);
   const { colors } = useTheme();
   const [notifications, setNotifications] = useState([]);
@@ -35,24 +37,19 @@ export default function RelativeNotificationsScreen({ navigation }) {
     } catch {}
   };
 
-  const getTimeStr = (dt) => {
-    if (!dt) return '';
-    const d = new Date(dt);
-    return d.toLocaleDateString('tr-TR') + ' ' + d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  };
-
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
+        <BreathingOrb color={colors.primary} size={160} duration={4600} opacity={0.10} style={{ top: -60, right: -40 }} />
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.primary} />
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Ionicons name="notifications-outline" size={18} color={colors.textPrimary} />
           <Text style={[s.headerTitle, { color: colors.textPrimary }]}>
-            Bildirimler{unreadCount > 0 ? (' (' + unreadCount + ')') : ''}
+            Bildirimler{unreadCount > 0 ? ` (${unreadCount})` : ''}
           </Text>
         </View>
         {unreadCount > 0 ? (
@@ -76,32 +73,46 @@ export default function RelativeNotificationsScreen({ navigation }) {
           data={notifications}
           keyExtractor={(item, i) => String(item.id || i)}
           contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 12 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[s.notifCard,
-                { backgroundColor: item.is_read ? colors.surface : colors.surface2 },
-                { borderLeftColor: item.is_read ? colors.border : colors.primary }
-              ]}
-              onPress={() => !item.is_read && markRead(item.id)}
-            >
-              <View style={s.notifContent}>
-                <View style={s.notifTop}>
-                  <Text style={[s.notifTitle, { color: colors.textPrimary }]}>
-                    {item.title || 'Bildirim'}
-                  </Text>
-                  {!item.is_read && <View style={[s.unreadDot, { backgroundColor: colors.primary }]} />}
-                </View>
-                <Text style={[s.notifMsg, { color: colors.textSecondary }]}>{item.message}</Text>
-                {item.related_user_name ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Ionicons name="person-outline" size={11} color={colors.primary} />
-                    <Text style={[s.notifFrom, { color: colors.primary }]}>{item.related_user_name}</Text>
+          renderItem={({ item }) => {
+            const isCiddi = item.title && (item.title.includes('CİDDİ') || item.title.includes('CIDDI'));
+            return (
+              <TouchableOpacity
+                style={[
+                  s.notifCard,
+                  { backgroundColor: isCiddi
+                      ? (item.is_read ? 'rgba(248,113,113,0.08)' : 'rgba(248,113,113,0.18)')
+                      : (item.is_read ? colors.surface : colors.surface2) },
+                  { borderLeftColor: isCiddi ? colors.error : (item.is_read ? colors.border : colors.primary) },
+                  isCiddi && { borderLeftWidth: 4 },
+                ]}
+                onPress={() => !item.is_read && markRead(item.id)}
+              >
+                {isCiddi && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6,
+                    backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                    <Ionicons name="warning" size={14} color={colors.error} />
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: colors.error, letterSpacing: 0.5 }}>CİDDİ SORUN BİLDİRİMİ</Text>
                   </View>
-                ) : null}
-                <Text style={[s.notifTime, { color: colors.textMuted }]}>{getTimeStr(item.created_at)}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                )}
+                <View style={s.notifContent}>
+                  <View style={s.notifTop}>
+                    <Text style={[s.notifTitle, { color: isCiddi ? colors.error : colors.textPrimary }]}>
+                      {item.title || 'Bildirim'}
+                    </Text>
+                    {!item.is_read && <View style={[s.unreadDot, { backgroundColor: isCiddi ? colors.error : colors.primary }]} />}
+                  </View>
+                  <Text style={[s.notifMsg, { color: colors.textSecondary }]}>{item.message}</Text>
+                  {item.related_user_name ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="person-outline" size={11} color={isCiddi ? colors.error : colors.primary} />
+                      <Text style={[s.notifFrom, { color: isCiddi ? colors.error : colors.primary }]}>{item.related_user_name}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={[s.notifTime, { color: colors.textMuted }]}>{getTimeStr(item.created_at)}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </SafeAreaView>
@@ -110,12 +121,19 @@ export default function RelativeNotificationsScreen({ navigation }) {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
   backBtn: { minWidth: 60 },
   headerTitle: { fontSize: 15, fontWeight: '700' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 15, fontWeight: '600' },
-  notifCard: { borderLeftWidth: 3, borderRadius: 12, padding: 14, marginBottom: 8, gap: 4 },
+  notifCard: { borderLeftWidth: 3, borderRadius: 12, padding: 14, marginBottom: 8 },
   notifContent: { gap: 4 },
   notifTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   notifTitle: { fontSize: 14, fontWeight: '700', flex: 1 },

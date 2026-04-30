@@ -1,6 +1,5 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../constants/config';
@@ -8,13 +7,13 @@ import { ROLES } from '../constants/config';
 // Relative screens
 import RelativeTasksScreen from '../screens/relative/RelativeTasksScreen';
 import RelativeStatsScreen from '../screens/relative/RelativeStatsScreen';
-import RelativeMessagesScreen from '../screens/relative/RelativeMessagesScreen';
 
 // Caregiver screens
 import CaregiverTasksScreen from '../screens/caregiver/CaregiverTasksScreen';
-import CaregiverMessagesScreen from '../screens/caregiver/CaregiverMessagesScreen';
 import CaregiverStatsScreen from '../screens/caregiver/CaregiverStatsScreen';
 
+// Common screens
+import MessagesScreen from '../screens/common/MessagesScreen';
 import TabBarIcon from '../components/common/TabBarIcon';
 
 const Tab = createBottomTabNavigator();
@@ -55,7 +54,8 @@ export default function AppTabs() {
           />
           <Tab.Screen
             name="Messages"
-            component={RelativeMessagesScreen}
+            component={MessagesScreen}
+            initialParams={{ emptyHint: 'Bakıcınızla konuşmaya başlayın' }}
             options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
           />
         </>
@@ -73,7 +73,8 @@ export default function AppTabs() {
           />
           <Tab.Screen
             name="Messages"
-            component={CaregiverMessagesScreen}
+            component={MessagesScreen}
+            initialParams={{ emptyHint: 'Hasta yakınıyla konuşmaya başlayın' }}
             options={{ title: 'Mesajlar', tabBarIcon: p => <TabBarIcon name="messages" {...p} /> }}
           />
         </>

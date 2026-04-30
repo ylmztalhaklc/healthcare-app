@@ -1,15 +1,25 @@
-﻿import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Animated } from 'react-native';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput,
+  FlatList, ActivityIndicator, Modal, Animated,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { messagesAPI, usersAPI, notificationsAPI } from '../../services/api';
+import { messagesAPI, usersAPI } from '../../services/api';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
+import { getUserInitials, getShortTimeStr } from '../../utils/helpers';
+import BreathingOrb from '../../components/common/BreathingOrb';
 
-export default function CaregiverMessagesScreen({ navigation }) {
+// emptyHint is role-specific text passed from AppTabs
+export default function MessagesScreen({ navigation, route }) {
+  const emptyHint = route?.params?.emptyHint ?? 'Konuşmaya başlayın';
   const { user, logout } = useContext(AuthContext);
   const { colors, isDark, toggleTheme } = useTheme();
+  const { unreadCount } = useUnreadCount(user?.id);
+
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -19,39 +29,34 @@ export default function CaregiverMessagesScreen({ navigation }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userSearch, setUserSearch] = useState('');
   const [startLoading, setStartLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+
   const intervalRef = useRef(null);
   const [viewedIds, setViewedIds] = useState(new Set());
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const pulseRef = useRef(null);
 
-  useEffect(() => {
-    fetchConversations();
-    intervalRef.current = setInterval(fetchConversations, 5000);
-    return () => clearInterval(intervalRef.current);
-  }, []);
-
-  useFocusEffect(useCallback(() => {
-    fetchConversations();
-    const fetchUnread = async () => {
-      try {
-        const res = await notificationsAPI.getAll(user?.id);
-        const arr = Array.isArray(res.data) ? res.data : [];
-        setUnreadCount(arr.filter(n => !n.is_read).length);
-      } catch {}
-    };
-    fetchUnread();
-    const t = setInterval(fetchUnread, 30000);
-    return () => clearInterval(t);
-  }, [user?.id]));
-
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const res = await messagesAPI.getUserConversations(user?.id);
       setConversations(Array.isArray(res.data) ? res.data : []);
     } catch {} finally { setLoading(false); }
-  };
+  }, [user?.id]);
 
+  // Poll every 5s while screen is mounted
+  useEffect(() => {
+    fetchConversations();
+    intervalRef.current = setInterval(fetchConversations, 5000);
+    return () => clearInterval(intervalRef.current);
+  }, [fetchConversations]);
+
+  // Refresh immediately when navigating back from ChatScreen
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations();
+    }, [fetchConversations])
+  );
+
+  // Pulse animation for unread conversations
   useEffect(() => {
     const hasUnread = conversations.some(c => (c.unread_count || 0) > 0 && !viewedIds.has(c.id));
     if (pulseRef.current) { pulseRef.current.stop(); pulseRef.current = null; }
@@ -83,22 +88,16 @@ export default function CaregiverMessagesScreen({ navigation }) {
       setStartLoading(false);
       setShowNewMsg(false);
       setSelectedUser(null);
-      navigation.navigate('ChatScreen', { contactId: selectedUser.id, contactName: selectedUser.full_name });
+      navigation.navigate('ChatScreen', {
+        contactId: selectedUser.id,
+        contactName: selectedUser.full_name,
+      });
     }, 300);
   };
 
-  const getUserInitials = (name) => {
-    if (!name) return '?';
-    return name.split(' ').map(x => x[0]).join('').substring(0, 2).toUpperCase();
-  };
-
-  const getTimeStr = (dt) => {
-    if (!dt) return '';
-    const d = new Date(dt);
-    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const filtered = conversations.filter(c => (c.name || '').toLowerCase().includes(search.toLowerCase()));
+  const filtered = conversations.filter(c =>
+    (c.name || '').toLowerCase().includes(search.toLowerCase())
+  );
 
   const renderConversation = ({ item }) => {
     const isUnread = (item.unread_count || 0) > 0 && !viewedIds.has(item.id);
@@ -108,29 +107,48 @@ export default function CaregiverMessagesScreen({ navigation }) {
     const barBg = isUnread
       ? pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [colors.primary, '#93C5FD'] })
       : colors.surface2;
+
     return (
       <TouchableOpacity
         onPress={() => {
           setViewedIds(prev => new Set([...prev, item.id]));
-          setConversations(prev => prev.map(c => c.id === item.id ? { ...c, unread_count: 0 } : c));
-          messagesAPI.markAllReadFrom(user.id, item.id).catch(() => {});
-          navigation.navigate('ChatScreen', { contactId: item.id || item.user_id, contactName: item.name || item.full_name });
+          navigation.navigate('ChatScreen', {
+            contactId: item.id || item.user_id,
+            contactName: item.name || item.full_name,
+          });
         }}
         activeOpacity={0.8}
         style={{ paddingHorizontal: 16, paddingVertical: 5 }}
       >
         <Animated.View style={[s.msgCard, { backgroundColor: colors.surface, borderColor: cardBorder, borderWidth: isUnread ? 1.5 : 1 }]}>
-          <View pointerEvents="none" style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: isUnread ? (isDark ? 'rgba(56,189,248,0.12)' : 'rgba(59,130,246,0.18)') : (isDark ? 'rgba(148,163,184,0.06)' : 'rgba(100,116,139,0.10)') }} />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: 50,
+              backgroundColor: isUnread
+                ? (isDark ? 'rgba(56,189,248,0.12)' : 'rgba(59,130,246,0.18)')
+                : (isDark ? 'rgba(148,163,184,0.06)' : 'rgba(100,116,139,0.10)'),
+            }}
+          />
           <Animated.View style={[s.msgAccent, { backgroundColor: barBg }]} />
           <View style={[s.msgAvatar, { backgroundColor: colors.primarySoft }]}>
-            <Text style={[s.avatarText, { color: colors.primary }]}>{getUserInitials(item.name || item.full_name)}</Text>
+            <Text style={[s.avatarText, { color: colors.primary }]}>
+              {getUserInitials(item.name || item.full_name)}
+            </Text>
           </View>
           <View style={s.msgBody}>
             <View style={s.msgTopRow}>
-              <Text style={[s.msgName, { color: colors.textPrimary }]} numberOfLines={1}>{item.name || item.full_name}</Text>
-              <Text style={[s.msgTime, { color: colors.textSecondary }]}>{getTimeStr(item.last_message_time || item.sent_at)}</Text>
+              <Text style={[s.msgName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {item.name || item.full_name}
+              </Text>
+              <Text style={[s.msgTime, { color: colors.textSecondary }]}>
+                {getShortTimeStr(item.last_message_time || item.sent_at)}
+              </Text>
             </View>
-            <Text style={[s.msgLastTxt, { color: isUnread ? colors.textPrimary : colors.textSecondary, fontWeight: isUnread ? '600' : '400' }]} numberOfLines={1}>
+            <Text
+              style={[s.msgLastTxt, { color: isUnread ? colors.textPrimary : colors.textSecondary, fontWeight: isUnread ? '600' : '400' }]}
+              numberOfLines={1}
+            >
               {item.last_message || 'Konuşma başlat'}
             </Text>
           </View>
@@ -146,7 +164,9 @@ export default function CaregiverMessagesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      {/* Header */}
+      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
+        <BreathingOrb color={colors.primary} size={180} duration={4300} opacity={0.10} style={{ top: -70, right: -50 }} />
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>Mesajlar</Text>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Misafir'}</Text>
@@ -155,18 +175,27 @@ export default function CaregiverMessagesScreen({ navigation }) {
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
             <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
+          <TouchableOpacity
+            style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+            onPress={() => navigation.navigate('Notifications')}
+          >
             <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
             {unreadCount > 0 && (
               <View style={s.badge}><Text style={s.badgeTxt}>{unreadCount > 99 ? '99+' : unreadCount}</Text></View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials(user?.full_name)}</Text>
+          <TouchableOpacity
+            style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+            onPress={() => setShowUserMenu(true)}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+              {getUserInitials(user?.full_name)}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* User menu modal */}
       <Modal transparent animationType="fade" visible={showUserMenu} onRequestClose={() => setShowUserMenu(false)}>
         <TouchableOpacity style={s.menuOverlay} onPress={() => setShowUserMenu(false)} activeOpacity={1}>
           <View style={[s.userMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -177,6 +206,7 @@ export default function CaregiverMessagesScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
+      {/* Search bar */}
       <View style={[s.searchWrap, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TextInput
           style={[s.searchInput, { backgroundColor: colors.surface2, color: colors.textPrimary, borderColor: colors.border }]}
@@ -191,9 +221,9 @@ export default function CaregiverMessagesScreen({ navigation }) {
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : filtered.length === 0 ? (
         <View style={s.empty}>
-        <Ionicons name="chatbubble-ellipses-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
+          <Ionicons name="chatbubble-ellipses-outline" size={48} color={colors.textMuted} style={{ marginBottom: 12 }} />
           <Text style={[s.emptyText, { color: colors.textSecondary }]}>Henüz mesaj yok</Text>
-          <Text style={[s.emptyHint, { color: colors.textSecondary }]}>Hasta yakınıyla konuşmaya başlayın</Text>
+          <Text style={[s.emptyHint, { color: colors.textSecondary }]}>{emptyHint}</Text>
         </View>
       ) : (
         <FlatList
@@ -204,10 +234,12 @@ export default function CaregiverMessagesScreen({ navigation }) {
         />
       )}
 
+      {/* FAB */}
       <TouchableOpacity style={[s.fab, { backgroundColor: colors.primary }]} onPress={openNewMessage}>
         <Text style={s.fabText}>+</Text>
       </TouchableOpacity>
 
+      {/* New message modal */}
       <Modal visible={showNewMsg} transparent animationType="slide" onRequestClose={() => setShowNewMsg(false)}>
         <View style={s.modalOverlay}>
           <View style={[s.modalSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -227,24 +259,36 @@ export default function CaregiverMessagesScreen({ navigation }) {
               </View>
             )}
             <ScrollView style={{ maxHeight: 280 }}>
-              {userSearch.length > 0 && users.filter(u => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).map(u => (
-                <TouchableOpacity
-                  key={u.id}
-                  style={[s.userRow, { borderColor: selectedUser?.id === u.id ? colors.primary : colors.border, backgroundColor: selectedUser?.id === u.id ? colors.primarySoft : colors.surface2 }]}
-                  onPress={() => setSelectedUser(u)}
-                >
-                  <View style={[s.avatar, { backgroundColor: colors.primarySoft }]}>
-                    <Text style={[s.avatarText, { color: colors.primary }]}>{getUserInitials(u.full_name)}</Text>
-                  </View>
-                  <View>
-                    <Text style={[s.convName, { color: colors.textPrimary }]}>{u.full_name}</Text>
-                    <Text style={[s.convLast, { color: colors.textSecondary }]}>{u.role}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {userSearch.length > 0 &&
+                users
+                  .filter(u => u.full_name.toLowerCase().includes(userSearch.toLowerCase()))
+                  .map(u => (
+                    <TouchableOpacity
+                      key={u.id}
+                      style={[
+                        s.userRow,
+                        {
+                          borderColor: selectedUser?.id === u.id ? colors.primary : colors.border,
+                          backgroundColor: selectedUser?.id === u.id ? colors.primarySoft : colors.surface2,
+                        },
+                      ]}
+                      onPress={() => setSelectedUser(u)}
+                    >
+                      <View style={[s.avatar, { backgroundColor: colors.primarySoft }]}>
+                        <Text style={[s.avatarText, { color: colors.primary }]}>{getUserInitials(u.full_name)}</Text>
+                      </View>
+                      <View>
+                        <Text style={[s.convName, { color: colors.textPrimary }]}>{u.full_name}</Text>
+                        <Text style={[s.convLast, { color: colors.textSecondary }]}>{u.role}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
             </ScrollView>
             <View style={s.modalFooter}>
-              <TouchableOpacity style={[s.cancelBtn, { borderColor: colors.border }]} onPress={() => { setShowNewMsg(false); setSelectedUser(null); setUserSearch(''); }}>
+              <TouchableOpacity
+                style={[s.cancelBtn, { borderColor: colors.border }]}
+                onPress={() => { setShowNewMsg(false); setSelectedUser(null); setUserSearch(''); }}
+              >
                 <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -269,7 +313,7 @@ const s = StyleSheet.create({
   headerName: { fontSize: 16, fontWeight: '700' },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
-  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  badge: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   badgeTxt: { fontSize: 9, fontWeight: '800', color: '#fff' },
   menuOverlay: { flex: 1 },
   userMenu: { position: 'absolute', top: 56, right: 16, borderRadius: 12, borderWidth: 1, minWidth: 140, overflow: 'hidden' },
@@ -279,13 +323,9 @@ const s = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 40 },
   emptyText: { fontSize: 15, fontWeight: '600', marginBottom: 6 },
   emptyHint: { fontSize: 12 },
-  convRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, alignItems: 'center', gap: 12 },
   avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   avatarText: { fontSize: 14, fontWeight: '700' },
-  convInfo: { flex: 1 },
-  convTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
   convName: { fontSize: 14, fontWeight: '600' },
-  convTime: { fontSize: 11 },
   convLast: { fontSize: 12 },
   msgCard: { flexDirection: 'row', borderRadius: 14, overflow: 'hidden', alignItems: 'center' },
   msgAccent: { width: 3, alignSelf: 'stretch' },

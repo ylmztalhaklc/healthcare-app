@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../constants/config';
+import BreathingOrb, { EkgWatermark, PlusWatermark } from '../../components/common/BreathingOrb';
 
 export default function RegisterScreen({ navigation }) {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -64,23 +65,28 @@ export default function RegisterScreen({ navigation }) {
     // Hero Section
     hero: {
       height: 220,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
       position: 'relative',
       overflow: 'hidden',
       justifyContent: 'center',
       alignItems: 'center',
       borderBottomWidth: 1,
-      borderBottomColor: colors.surface2,
+      borderBottomColor: colors.divider,
     },
     logo: {
-      width: 60,
-      height: 60,
-      borderRadius: 16,
+      width: 64,
+      height: 64,
+      borderRadius: 20,
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 12,
       zIndex: 10,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45,
+      shadowRadius: 16,
+      elevation: 10,
     },
     logoIcon: {
       fontSize: 26,
@@ -278,8 +284,14 @@ export default function RegisterScreen({ navigation }) {
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
           {/* Hero Section */}
           <View style={s.hero}>
+            {/* Breathing orbs */}
+            <BreathingOrb color={colors.primary} size={300} duration={4200} opacity={0.13} style={{ top: -90, left: -90 }} />
+            <BreathingOrb color={colors.accent ?? colors.info} size={180} duration={5600} opacity={0.08} style={{ bottom: -60, right: -50 }} />
+            {/* Filigranlar */}
+            <PlusWatermark color={colors.primary} size={44} style={{ bottom: 20, right: 28 }} />
+            <EkgWatermark  color={colors.primary} style={{ bottom: 10, left: 16 }} />
             <TouchableOpacity style={s.themeToggleBtn} onPress={toggleTheme}>
-              <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FBBF24' : '#60A5FA'} />
+              <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FBBF24' : colors.primary} />
             </TouchableOpacity>
             <View style={s.heroContent}>
               <View style={s.logo}>

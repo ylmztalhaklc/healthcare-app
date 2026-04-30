@@ -1,13 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime, timedelta
+import os
+import shutil
 
 from database import get_db, TaskInstance, Notification, TaskTemplate, User
 from schemas import TaskInstanceCreate, TaskInstanceOut, TaskStatusUpdate, TaskRating, TaskUpdate
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @router.post("/", response_model=TaskInstanceOut)
@@ -91,13 +96,14 @@ def update_task_status(body: TaskStatusUpdate, db: Session = Depends(get_db)):
     if body.problem_message:
         task.problem_message = body.problem_message
         task.problem_severity = body.problem_severity
-        # Notify relative about problem
         caregiver = db.query(User).filter(User.id == body.user_id).first()
         caregiver_name = caregiver.full_name if caregiver else "Hasta Bakıcı"
+        is_ciddi = body.problem_severity == 'ciddi'
         notif = Notification(
             user_id=task.created_by_id,
-            title="Görevde Sorun Bildirildi",
-            message=f"{caregiver_name} görevinizde sorun bildirdi: {task.title}",
+            title="⚠️ CİDDİ SORUN BİLDİRİLDİ" if is_ciddi else "Görevde Sorun Bildirildi",
+            message=f"{caregiver_name} görevinizde CİDDİ sorun bildirdi: {task.title}" if is_ciddi
+                    else f"{caregiver_name} görevinizde sorun bildirdi: {task.title}",
             related_user_name=caregiver_name,
         )
         db.add(notif)
@@ -127,14 +133,25 @@ def relative_stats(user_id: int, db: Session = Depends(get_db)):
     completed = sum(1 for t in tasks if t.status == "tamamlandi")
     active = sum(1 for t in tasks if t.status == "bekliyor")
     problems = sum(1 for t in tasks if t.problem_message)
+    ciddi = sum(1 for t in tasks if t.problem_severity == 'ciddi')
     resolved = sum(1 for t in tasks if t.resolution_note)
+    # Son 30 günlük sorun trendi (haftalık gruplar)
+    today = datetime.utcnow().date()
+    trend = []
+    for w in range(4):
+        week_end = today - timedelta(days=w * 7)
+        week_start = week_end - timedelta(days=6)
+        week_problems = sum(1 for t in tasks if t.problem_message and week_start <= t.scheduled_for.date() <= week_end)
+        trend.insert(0, {"week": 3 - w, "count": week_problems})
     return {
         "total_tasks": total,
         "completed_tasks": completed,
         "active_tasks": active,
         "completion_rate": round(completed / total * 100, 1) if total else 0,
         "problems_reported": problems,
+        "ciddi_problems": ciddi,
         "problems_resolved": resolved,
+        "problem_trend": trend,
     }
 
 
@@ -143,6 +160,8 @@ def caregiver_stats(user_id: int, db: Session = Depends(get_db)):
     tasks = db.query(TaskInstance).filter(TaskInstance.assigned_to_id == user_id).all()
     total = len(tasks)
     completed = sum(1 for t in tasks if t.status == "tamamlandi")
+    problems_reported = sum(1 for t in tasks if t.problem_message)
+    ciddi_problems = sum(1 for t in tasks if t.problem_severity == 'ciddi')
     ratings = [t.rating for t in tasks if t.rating is not None]
     today = datetime.utcnow().date()
     tasks_today = sum(1 for t in tasks if t.scheduled_for.date() == today)
@@ -168,8 +187,25 @@ def caregiver_stats(user_id: int, db: Session = Depends(get_db)):
         "completion_rate": round(completed / total * 100, 1) if total else 0,
         "avg_rating": round(sum(ratings) / len(ratings), 2) if ratings else 0,
         "tasks_today": tasks_today,
+        "problems_reported": problems_reported,
+        "ciddi_problems": ciddi_problems,
         "weekly_data": weekly_data,
     }
+
+
+@router.post("/{task_id}/photo")
+async def upload_task_photo(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı.")
+    ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    filename = f"task_{task_id}_{int(datetime.utcnow().timestamp())}{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    task.completion_photo_url = f"/uploads/{filename}"
+    db.commit()
+    return {"url": f"/uploads/{filename}"}
 
 
 @router.patch("/template/{template_id}", response_model=TaskInstanceOut)

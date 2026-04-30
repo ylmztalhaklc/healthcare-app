@@ -1,13 +1,16 @@
-﻿import React, { useState, useContext, useEffect, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+﻿import React, { useState, useContext, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { tasksAPI, notificationsAPI } from '../../services/api';
+import { tasksAPI } from '../../services/api';
+import { DAYS_MON_FIRST } from '../../constants/config';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
+import { getUserInitials } from '../../utils/helpers';
+import BreathingOrb from '../../components/common/BreathingOrb';
 
-const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const DAYS = DAYS_MON_FIRST;
 
 export default function CaregiverStatsScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -15,22 +18,11 @@ export default function CaregiverStatsScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useUnreadCount(user?.id);
+  // todayIndex: Mon=0 … Sun=6
+  const todayIndex = (new Date().getDay() + 6) % 7;
 
   useEffect(() => { fetchStats(); }, []);
-
-  useFocusEffect(useCallback(() => {
-    const fetchUnread = async () => {
-      try {
-        const res = await notificationsAPI.getAll(user?.id);
-        const arr = Array.isArray(res.data) ? res.data : [];
-        setUnreadCount(arr.filter(n => !n.is_read).length);
-      } catch {}
-    };
-    fetchUnread();
-    const t = setInterval(fetchUnread, 30000);
-    return () => clearInterval(t);
-  }, [user?.id]));
 
   const fetchStats = async () => {
     try {
@@ -39,21 +31,19 @@ export default function CaregiverStatsScreen({ navigation }) {
     } catch {} finally { setLoading(false); }
   };
 
-  const getUserInitials = () => {
-    const n = user?.full_name || '';
-    return n.split(' ').map(x => x[0]).join('').substring(0, 2).toUpperCase() || 'HB';
-  };
+  const getUserInitialsLocal = () => getUserInitials(user?.full_name, 'HB');
 
   const statTiles = stats ? [
     { iconName: 'checkmark-circle', label: 'Tamamlanan', value: stats.completed_tasks, color: colors.success },
     { iconName: 'bar-chart', label: 'Tamamlanma', value: (stats.completion_rate ?? 0) + '%', color: colors.primary },
+    { iconName: 'warning', label: 'Aktif Sorun', value: stats.problems_reported ?? 0, color: colors.error },
     { iconName: 'star', label: 'Ort. Puan', value: stats.avg_rating ? stats.avg_rating.toFixed(1) : '---', color: '#FFB347' },
-    { iconName: 'calendar', label: 'Bugünkü', value: stats.tasks_today, color: colors.textPrimary },
   ] : [];
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
+        <BreathingOrb color={colors.primary} size={200} duration={4800} opacity={0.12} style={{ top: -80, right: -60 }} />
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>İstatistiklerim</Text>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Misafir'}</Text>
@@ -69,7 +59,7 @@ export default function CaregiverStatsScreen({ navigation }) {
             )}
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials()}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitialsLocal()}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -104,26 +94,22 @@ export default function CaregiverStatsScreen({ navigation }) {
               <Text style={[s.chartTitle, { color: colors.textPrimary }]}>Haftalık Performans</Text>
             </View>
             <View style={s.barChart}>
-              {(() => {
-                const wData = stats?.weekly_data || DAYS.map(() => ({ rate: 0 }));
-                const maxR = Math.max(...wData.map(x => x.rate), 1);
-                const todayDow = (new Date().getDay() + 6) % 7;
-                return wData.map((d, i) => {
-                  const barH = Math.max(4, Math.round((d.rate / maxR) * 78));
-                  const isToday = i === todayDow;
-                  return (
-                    <View key={i} style={s.barCol}>
-                      <View style={[s.barFill, {
-                        height: barH,
-                        backgroundColor: isToday ? colors.primary : (d.rate > 0 ? colors.primarySoft : colors.surface2),
-                        borderTopLeftRadius: 4,
-                        borderTopRightRadius: 4,
-                      }]} />
-                      <Text style={[s.barDay, { color: isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? '700' : '500' }]}>{DAYS[i]}</Text>
-                    </View>
-                  );
-                });
-              })()}
+              {DAYS.map((dayLabel, i) => {
+                const rate = stats?.weekly_data?.[i]?.rate ?? 0;
+                const barH = Math.max(4, rate * 0.88);
+                const isToday = i === todayIndex;
+                return (
+                  <View key={i} style={s.barCol}>
+                    <View style={[s.barFill, {
+                      height: barH,
+                      backgroundColor: isToday ? colors.primary : colors.primarySoft,
+                      borderTopWidth: 2, borderTopColor: colors.primary,
+                      borderTopLeftRadius: 4, borderTopRightRadius: 4,
+                    }]} />
+                    <Text style={[s.barDay, { color: isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? '700' : '500' }]}>{dayLabel}</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
 
@@ -136,8 +122,10 @@ export default function CaregiverStatsScreen({ navigation }) {
               { label: 'Toplam Atanan Görev', value: stats?.total_assigned ?? 0, color: colors.textPrimary },
               { label: 'Tamamlanan Görev', value: stats?.completed_tasks ?? 0, color: colors.success },
               { label: 'Tamamlanma Oranı', value: (stats?.completion_rate ?? 0) + '%', color: colors.primary },
-              { label: 'Ortalama Puan', value: stats?.avg_rating ? stats.avg_rating.toFixed(1) + ' / 5.0' : 'Henüz yok', color: '#FFB347' },
               { label: 'Bugünkü Görev', value: stats?.tasks_today ?? 0, color: colors.textPrimary },
+              { label: 'Bildirilen Sorun', value: stats?.problems_reported ?? 0, color: colors.error },
+              { label: 'Ciddi Sorun', value: stats?.ciddi_problems ?? 0, color: (stats?.ciddi_problems > 0 ? colors.error : colors.textSecondary) },
+              { label: 'Ortalama Puan', value: stats?.avg_rating ? stats.avg_rating.toFixed(1) + ' / 5.0' : 'Henüz yok', color: '#FFB347' },
             ].map((row, i) => (
               <View key={i} style={[s.summaryRow, { borderBottomColor: colors.border }]}>
                 <Text style={[s.summaryLabel, { color: colors.textSecondary }]}>{row.label}</Text>
@@ -163,7 +151,7 @@ const s = StyleSheet.create({
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
   content: { paddingHorizontal: 16, paddingVertical: 16, paddingBottom: 40 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-  statTile: { width: '47%', borderRadius: 14, borderWidth: 1, padding: 16, alignItems: 'flex-start' },
+  statTile: { width: '47%', borderRadius: 14, borderWidth: 1, padding: 16, alignItems: 'center' },
   tileIcon: { fontSize: 24, marginBottom: 8 },
   tileNum: { fontSize: 26, fontWeight: '800', lineHeight: 30 },
   tileLbl: { fontSize: 10, fontWeight: '600', marginTop: 4 },

@@ -32,46 +32,102 @@ Hasta yakınları ile hasta bakıcıları arasındaki günlük bakım görevleri
 
 ---
 
-## Klasor Yapisi
+## Proje Yapısı
 
 ```
 healthcare-app/
-├── start.bat                # Backend + emulator tek tıklama başlangıcı (Windows)
-├── backend/
-│   ├── main.py              # FastAPI uygulama girisi, CORS, startup migrations
-│   ├── database.py          # SQLAlchemy modelleri ve engine
-│   ├── schemas.py           # Pydantic istek/yanıt şemaları
-│   ├── requirements.txt
+├── start.bat                         # Backend + Expo emulator tek tıkla başlatır (Windows)
+├── backend/                          # FastAPI REST API
+│   ├── main.py                       # Uygulama girişi: CORS, StaticFiles, startup migrations
+│   ├── database.py                   # SQLAlchemy ORM modelleri (User, Task, Message, vb.)
+│   ├── schemas.py                    # Pydantic istek/yanıt şemaları (CaregiverStats, RelativeStats vb.)
+│   ├── requirements.txt              # Python bağımlılıkları
+│   ├── healthcare.db                 # SQLite veritabanı (git'e eklenmez)
+│   ├── uploads/                      # Yüklenen görev ve mesaj fotoğrafları
 │   └── routers/
-│       ├── auth.py          # Kayiı, giriş, JWT
-│       ├── tasks.py         # Görev CRUD, istatistik, haftalik veri
-│       ├── users.py         # Kullanıcı listeleme
-│       ├── notifications.py # Bildirimler
-│       └── messages.py      # Mesajlaşma, okunmamış mesaj sayısı
-└── mobile/
-    ├── App.js
-    ├── app.json
+│       ├── auth.py                   # Kayıt, giriş, JWT token üretimi
+│       ├── tasks.py                  # Görev CRUD, durum güncelleme, fotoğraf yükleme,
+│       │                             #   istatistik endpointleri (caregiver + relative)
+│       ├── users.py                  # Kullanıcı listeleme, role göre filtreleme
+│       ├── notifications.py          # Bildirim listeleme, okundu işaretleme
+│       └── messages.py               # Mesaj gönderme/düzenleme/silme, okunmamış sayaç,
+│                                     #   fotoğraf eki yükleme
+└── mobile/                           # React Native (Expo) mobil uygulama
+    ├── App.js                        # Kök bileşen: Provider'ları sarar
+    ├── app.json                      # Expo konfigürasyonu (uygulama adı, ikon vb.)
+    ├── package.json
     └── src/
         ├── constants/
-        │   └── config.js    # API_BASE_URL ve uygulama sabitleri
+        │   └── config.js             # API_BASE_URL, ROLES, TASK_STATUS sabitleri,
+        │                             #   Türkçe gün/ay isimleri
         ├── context/
-        │   ├── AuthContext.jsx
-        │   └── ThemeContext.jsx
+        │   ├── AuthContext.jsx       # Kullanıcı oturumu (JWT + AsyncStorage), login/logout
+        │   └── ThemeContext.jsx      # Koyu/açık tema geçişi, aktif renk paletini sağlar
+        ├── hooks/
+        │   └── useUnreadCount.js     # Her ekranda okunmamış bildirim sayısını 30s'de bir çeker
+        ├── utils/
+        │   └── helpers.js            # getUserInitials, getTimeStr, getShortTimeStr yardımcı fonk.
         ├── navigation/
-        │   ├── RootNavigator.jsx
-        │   ├── AuthStack.jsx
-        │   └── AppTabs.jsx
+        │   ├── RootNavigator.jsx     # Auth durumuna göre AuthStack/AppTabs arasında yönlendirir
+        │   ├── AuthStack.jsx         # Giriş ve kayıt ekranları stack'i
+        │   └── AppTabs.jsx           # Role göre alt tab navigasyonu (hasta yakını / bakıcı)
         ├── screens/
-        │   ├── auth/        # LoginScreen, RegisterScreen
-        │   ├── relative/    # Home, Tasks, Messages, Notifications, Stats
-        │   ├── caregiver/   # Home, Tasks, Messages, Notifications, Stats
-        │   └── common/      # ChatScreen
+        │   ├── auth/
+        │   │   ├── LoginScreen.jsx   # Giriş ekranı (rol seçimi, e-posta, şifre)
+        │   │   └── RegisterScreen.jsx# Kayıt ekranı (ad, rol, e-posta, şifre)
+        │   ├── relative/             # Hasta Yakını ekranları
+        │   │   ├── RelativeTasksScreen.jsx
+        │   │   │                     # Haftalık takvim (◁▷ navigasyon), görev listesi,
+        │   │   │                     #   görev oluşturma/düzenleme/silme modal'ları,
+        │   │   │                     #   görev detay (fotoğraf, sorun, yıldız değerlendirme)
+        │   │   ├── RelativeStatsScreen.jsx
+        │   │   │                     # Tamamlanma oranı tile'ları, 4-haftalık sorun trendi,
+        │   │   │                     #   ciddi sorun uyarısı, tüm bakıcıların performans listesi
+        │   │   ├── RelativeMessagesScreen.jsx  # (Tab üzerinden MessagesScreen'e yönlendirir)
+        │   │   └── RelativeNotificationsScreen.jsx
+        │   ├── caregiver/            # Hasta Bakıcısı ekranları
+        │   │   ├── CaregiverTasksScreen.jsx
+        │   │   │                     # Haftalık takvim (◁▷ navigasyon), günlük görev listesi,
+        │   │   │                     #   ilerleme banner'ı, durum güncelleme, fotoğraf yükleme,
+        │   │   │                     #   sorun bildirimi modal'ı (hafif/orta/ciddi)
+        │   │   ├── CaregiverStatsScreen.jsx
+        │   │   │                     # Haftalık performans bar grafiği, tamamlanma/sorun tile'ları,
+        │   │   │                     #   performans özet tablosu
+        │   │   ├── CaregiverMessagesScreen.jsx
+        │   │   └── CaregiverNotificationsScreen.jsx
+        │   └── common/
+        │       ├── ChatScreen.jsx    # 1'e-1 sohbet: mesaj gönderme, fotoğraf eki,
+        │       │                     #   mesaj düzenleme (alt banner UX), silme, 5s polling
+        │       ├── MessagesScreen.jsx# Konuşma listesi, arama, okunmamış rozet
+        │       └── NotificationsScreen.jsx
+        │                             # Bildirim listesi, okundu işaretleme,
+        │                             #   ciddi sorun bildirimleri için kırmızı banner
         ├── services/
-        │   └── api.js       # Axios instance ve endpoint çağrıları
-        ├── theme/           # colors.js, typography.js
-        └── components/
-            └── common/      # TabBarIcon, PlaceholderScreen
+        │   └── api.js                # Axios instance (JWT interceptor, 401 auto-logout),
+        │                             #   authAPI, tasksAPI, usersAPI, messagesAPI, notificationsAPI
+        ├── components/
+        │   └── common/
+        │       ├── BreathingOrb.jsx  # Animasyonlu nefes alan arka plan orb bileşeni,
+        │       │                     #   PlusWatermark ve EkgWatermark filigran bileşenleri
+        │       ├── TabBarIcon.jsx    # Alt navigasyon sekme ikonları
+        │       └── PlaceholderScreen.jsx
+        └── theme/
+            ├── colors.js             # Koyu/açık tema renk paletleri, health semantik token'ları
+            │                         #   (heartRate, oxygen vb.), gradients export'u
+            ├── index.js              # Tüm tema token'larını export eder; teal glow shadow sistemi
+            └── typography.js         # Font boyutu ve ağırlık sabitleri
 ```
+
+### Katman Özeti
+
+| Katman | Klasör / Dosya | Görev |
+|--------|---------------|-------|
+| API İstemcisi | `services/api.js` | Tüm HTTP çağrıları tek yerden yönetilir |
+| Global State | `context/` | Oturum ve tema; her bileşenden `useAuth()` / `useTheme()` ile erişilir |
+| Navigasyon | `navigation/` | Auth durumuna + role göre hangi tab/stack gösterileceğini belirler |
+| Ekranlar | `screens/` | Her ekran kendi state'ini ve API çağrısını taşır |
+| Tema | `theme/` | Renk, tipografi ve gölge token'ları merkezi olarak tutulur |
+| Backend | `backend/routers/` | Her router bir domain'e karşılık gelir (auth, tasks, messages, notifications, users) |
 
 ---
 

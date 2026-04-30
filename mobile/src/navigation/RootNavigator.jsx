@@ -4,13 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { ROLES } from '../constants/config';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
-
-// Import Notification Screens
-import RelativeNotificationsScreen from '../screens/relative/RelativeNotificationsScreen';
-import CaregiverNotificationsScreen from '../screens/caregiver/CaregiverNotificationsScreen';
+import NotificationsScreen from '../screens/common/NotificationsScreen';
 import ChatScreen from '../screens/common/ChatScreen';
 
 const Stack = createNativeStackNavigator();
@@ -27,17 +23,15 @@ export default function RootNavigator() {
     );
   }
 
-  const isRelative = user?.role === ROLES.RELATIVE;
-
   return (
     <NavigationContainer>
       {user ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="AppTabs" component={AppTabs} />
           <Stack.Screen name="ChatScreen" component={ChatScreen} />
-          <Stack.Screen 
-            name="Notifications" 
-            component={isRelative ? RelativeNotificationsScreen : CaregiverNotificationsScreen} 
+          <Stack.Screen
+            name="Notifications"
+            component={NotificationsScreen}
             options={{ presentation: 'modal' }}
           />
         </Stack.Navigator>

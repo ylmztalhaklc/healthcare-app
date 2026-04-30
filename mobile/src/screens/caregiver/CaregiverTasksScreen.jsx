@@ -1,39 +1,33 @@
-﻿import React, { useState, useEffect, useContext, useCallback } from 'react';
+﻿import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator, Alert,
   TouchableOpacity, Modal, TextInput, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { tasksAPI, notificationsAPI } from '../../services/api';
+import { tasksAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-
-const DAYS_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+import { TASK_STATUS, TASK_STATUS_LABELS, DAYS_SUN_FIRST, MONTHS_TR } from '../../constants/config';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
+import { getUserInitials } from '../../utils/helpers';
+import * as ImagePicker from 'expo-image-picker';
+import BreathingOrb from '../../components/common/BreathingOrb';
 
 function getStatusColor(status, colors) {
   switch (status) {
-    case 'tamamlandi': return colors.success;
-    case 'sorun_var': return colors.error;
-    case 'devam_ediyor': return '#FB923C';
+    case TASK_STATUS.DONE: return colors.success;
+    case TASK_STATUS.PROBLEM: return colors.error;
+    case TASK_STATUS.IN_PROGRESS: return '#FB923C';
     default: return '#FBBF24';
   }
 }
 function getChipBg(status) {
   switch (status) {
-    case 'tamamlandi': return 'rgba(52,211,153,0.15)';
-    case 'sorun_var': return 'rgba(248,113,113,0.15)';
-    case 'devam_ediyor': return 'rgba(251,146,60,0.15)';
+    case TASK_STATUS.DONE: return 'rgba(52,211,153,0.15)';
+    case TASK_STATUS.PROBLEM: return 'rgba(248,113,113,0.15)';
+    case TASK_STATUS.IN_PROGRESS: return 'rgba(251,146,60,0.15)';
     default: return 'rgba(251,191,36,0.15)';
-  }
-}
-function getStatusLabel(status) {
-  switch (status) {
-    case 'tamamlandi': return 'Tamamlandı';
-    case 'sorun_var': return 'Sorun Var';
-    case 'devam_ediyor': return 'Devam Ediyor';
-    default: return 'Bekliyor';
   }
 }
 
@@ -43,13 +37,15 @@ export default function CaregiverTasksScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [weekOffset, setWeekOffset] = useState(0);
   const [weekDates, setWeekDates] = useState([]);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { unreadCount } = useUnreadCount(user?.id);
 
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [problemTaskId, setProblemTaskId] = useState(null);
   const [problemText, setProblemText] = useState('');
+  const [problemSeverity, setProblemSeverity] = useState('orta');
   const [problemPhoto, setProblemPhoto] = useState(null);
   const [problemLoading, setProblemLoading] = useState(false);
 
@@ -58,17 +54,40 @@ export default function CaregiverTasksScreen({ navigation }) {
   const [completePhoto, setCompletePhoto] = useState(null);
   const [completeLoading, setCompleteLoading] = useState(false);
 
+  const pickPhoto = async (setter) => {
+    Alert.alert('Fotoğraf Ekle', 'Kaynak seçin', [
+      {
+        text: 'Galeri', onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Galeri erişimi gerekiyor.'); return; }
+          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+          if (!r.canceled) setter(r.assets[0].uri);
+        },
+      },
+      {
+        text: 'Kamera', onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Kamera erişimi gerekiyor.'); return; }
+          const r = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 });
+          if (!r.canceled) setter(r.assets[0].uri);
+        },
+      },
+      { text: 'İptal', style: 'cancel' },
+    ]);
+  };
+
   useEffect(() => {
     const today = new Date();
     const start = new Date(today);
-    start.setDate(today.getDate() - today.getDay());
+    start.setDate(today.getDate() - today.getDay() + weekOffset * 7);
     const dates = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
     });
     setWeekDates(dates);
-  }, []);
+    setSelectedDate(prev => dates[prev.getDay()]);
+  }, [weekOffset]);
 
   useEffect(() => { fetchTasks(); }, [selectedDate]);
 
@@ -85,27 +104,6 @@ export default function CaregiverTasksScreen({ navigation }) {
     }
   };
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await notificationsAPI.getAll(user?.id);
-      const arr = Array.isArray(res.data) ? res.data : [];
-      setUnreadCount(arr.filter(n => !n.is_read).length);
-    } catch {}
-  };
-
-  useFocusEffect(useCallback(() => {
-    const fetchUnread = async () => {
-      try {
-        const res = await notificationsAPI.getAll(user?.id);
-        const arr = Array.isArray(res.data) ? res.data : [];
-        setUnreadCount(arr.filter(n => !n.is_read).length);
-      } catch {}
-    };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
-  }, [user?.id]));
-
   const updateTaskStatus = async (taskId, newStatus) => {
     try {
       await tasksAPI.updateStatus({ task_id: taskId, user_id: user?.id, status: newStatus });
@@ -118,6 +116,7 @@ export default function CaregiverTasksScreen({ navigation }) {
   const openProblemModal = (taskId) => {
     setProblemTaskId(taskId);
     setProblemText('');
+    setProblemSeverity('orta');
     setProblemPhoto(null);
     setShowProblemModal(true);
   };
@@ -129,7 +128,16 @@ export default function CaregiverTasksScreen({ navigation }) {
     }
     setProblemLoading(true);
     try {
-      await tasksAPI.updateStatus({ task_id: problemTaskId, user_id: user?.id, status: 'sorun_var' });
+      await tasksAPI.updateStatus({
+        task_id: problemTaskId,
+        user_id: user?.id,
+        status: TASK_STATUS.PROBLEM,
+        problem_message: problemText,
+        problem_severity: problemSeverity,
+      });
+      if (problemPhoto) {
+        await tasksAPI.uploadTaskPhoto(problemTaskId, problemPhoto).catch(() => {});
+      }
       setShowProblemModal(false);
       fetchTasks();
     } catch {
@@ -148,7 +156,10 @@ export default function CaregiverTasksScreen({ navigation }) {
   const submitComplete = async () => {
     setCompleteLoading(true);
     try {
-      await tasksAPI.updateStatus({ task_id: completeTaskId, user_id: user?.id, status: 'tamamlandi' });
+      await tasksAPI.updateStatus({ task_id: completeTaskId, user_id: user?.id, status: TASK_STATUS.DONE });
+      if (completePhoto) {
+        await tasksAPI.uploadTaskPhoto(completeTaskId, completePhoto).catch(() => {});
+      }
       setShowCompleteModal(false);
       fetchTasks();
     } catch {
@@ -159,18 +170,13 @@ export default function CaregiverTasksScreen({ navigation }) {
   };
 
   const isDateSelected = (date) => date.toDateString() === selectedDate.toDateString();
-  const completedCount = tasks.filter(t => t.status === 'tamamlandi').length;
+  const completedCount = tasks.filter(t => t.status === TASK_STATUS.DONE).length;
   const percentage = tasks.length > 0 ? Math.round(completedCount / tasks.length * 100) : 0;
-
-  const getUserInitials = () => {
-    const name = user?.full_name || '';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'HB';
-  };
 
   const renderTask = ({ item }) => {
     const barColor = getStatusColor(item.status, colors);
     const chipBg = getChipBg(item.status);
-    const statusLabel = getStatusLabel(item.status);
+    const statusLabel = TASK_STATUS_LABELS[item.status] ?? 'Bekliyor';
     const timeStr = item.scheduled_for
       ? new Date(item.scheduled_for).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
       : '';
@@ -191,12 +197,12 @@ export default function CaregiverTasksScreen({ navigation }) {
               <Text style={[s.taskMeta, { color: colors.textSecondary }]}>{timeStr}</Text>
             </View>
           ) : null}
-          {item.status !== 'tamamlandi' && (
+          {item.status !== TASK_STATUS.DONE && (
             <View style={{ flexDirection: 'row', marginTop: 12, gap: 6 }}>
-              {item.status === 'bekliyor' && (
+              {item.status === TASK_STATUS.PENDING && (
                 <TouchableOpacity
                   style={[s.actionBtn, { backgroundColor: colors.primarySoft, borderColor: 'rgba(56,189,248,0.3)', flex: 1 }]}
-                  onPress={() => updateTaskStatus(item.id, 'devam_ediyor')}
+                  onPress={() => updateTaskStatus(item.id, TASK_STATUS.IN_PROGRESS)}
                 >
                   <Ionicons name="play-circle-outline" size={13} color={colors.primary} />
                   <Text style={[s.actionBtnText, { color: colors.primary }]}>Başlatıldı</Text>
@@ -214,7 +220,7 @@ export default function CaregiverTasksScreen({ navigation }) {
                 onPress={() => openCompleteModal(item.id)}
               >
                 <Ionicons name="checkmark-circle-outline" size={13} color={colors.success} />
-                  <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamlandı</Text>
+                <Text style={[s.actionBtnText, { color: colors.success }]}>Tamamlandı</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -225,7 +231,8 @@ export default function CaregiverTasksScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
-      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
+        <BreathingOrb color={colors.primary} size={180} duration={4500} opacity={0.10} style={{ top: -70, right: -50 }} />
         <View>
           <Text style={[s.greeting, { color: colors.textSecondary }]}>Merhaba,</Text>
           <Text style={[s.headerName, { color: colors.textPrimary }]}>{user?.full_name || 'Bakıcı'}</Text>
@@ -234,7 +241,7 @@ export default function CaregiverTasksScreen({ navigation }) {
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={toggleTheme}>
             <Ionicons name={isDark ? 'sunny' : 'moon'} size={18} color={isDark ? '#FBBF24' : '#60A5FA'} />
           </TouchableOpacity>
-          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => { fetchUnreadCount(); navigation.navigate('Notifications'); }}>
+          <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => navigation.navigate('Notifications')}>
             <Ionicons name="notifications-outline" size={18} color={colors.textSecondary} />
             {unreadCount > 0 && (
               <View style={s.badge}>
@@ -259,9 +266,23 @@ export default function CaregiverTasksScreen({ navigation }) {
       </Modal>
 
       <View style={[s.calendarWrap, { backgroundColor: colors.background }]}>
-        <Text style={[s.calMonth, { color: colors.textPrimary }]}>
-          {selectedDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
-        </Text>
+        <View style={s.calHeader}>
+          <TouchableOpacity
+            onPress={() => setWeekOffset(w => w - 1)}
+            style={[s.calArrow, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+          >
+            <Ionicons name="chevron-back" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <Text style={[s.calMonth, { color: colors.textPrimary }]}>
+            {MONTHS_TR[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+          </Text>
+          <TouchableOpacity
+            onPress={() => setWeekOffset(w => w + 1)}
+            style={[s.calArrow, { backgroundColor: colors.surface2, borderColor: colors.border }]}
+          >
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
         <View style={s.weekRow}>
           {weekDates.map((date, idx) => {
             const isSel = isDateSelected(date);
@@ -275,7 +296,7 @@ export default function CaregiverTasksScreen({ navigation }) {
                 onPress={() => setSelectedDate(date)}
               >
                 <Text style={[s.dayName, { color: isSel ? '#fff' : colors.textSecondary }]}>
-                  {DAYS_TR[date.getDay()].substring(0, 2)}
+                  {DAYS_SUN_FIRST[date.getDay()].substring(0, 2)}
                 </Text>
                 <Text style={[s.dayNum, { color: isSel ? '#fff' : colors.textPrimary }]}>
                   {date.getDate()}
@@ -338,13 +359,35 @@ export default function CaregiverTasksScreen({ navigation }) {
               multiline
               numberOfLines={4}
             />
-            <Text style={[s.popupLabel, { color: colors.textSecondary, marginTop: 10 }]}>FOTOĞRAF (İSTEĞE BAĞLI)</Text>
+            <Text style={[s.popupLabel, { color: colors.textSecondary, marginTop: 10 }]}>CİDDİYET SEVİYESİ</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+              {[['hafif', '#FBBF24'], ['orta', '#FB923C'], ['ciddi', colors.error]].map(([val, col]) => (
+                <TouchableOpacity
+                  key={val}
+                  style={{ flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5,
+                    borderColor: problemSeverity === val ? col : colors.border,
+                    backgroundColor: problemSeverity === val ? col + '22' : colors.surface2,
+                    alignItems: 'center',
+                  }}
+                  onPress={() => setProblemSeverity(val)}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: problemSeverity === val ? col : colors.textMuted, textTransform: 'capitalize' }}>{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[s.popupLabel, { color: colors.textSecondary }]}>FOTOĞRAF (İSTEĞE BAĞLI)</Text>
             <TouchableOpacity
               style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: problemPhoto ? colors.error : colors.border }]}
-              onPress={() => Alert.alert('Bilgi', 'Fotoğraf yükleme yakın zamanda eklenecek.')}
+              onPress={() => pickPhoto(setProblemPhoto)}
             >
-              <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotoğraf Ekle</Text>
+              {problemPhoto ? (
+                <Image source={{ uri: problemPhoto }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+                  <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Fotoğraf Ekle</Text>
+                </>
+              )}
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
@@ -378,9 +421,16 @@ export default function CaregiverTasksScreen({ navigation }) {
             <Text style={[s.popupLabel, { color: colors.textSecondary }]}>FOTOĞRAF (İSTEĞE BAĞLI)</Text>
             <TouchableOpacity
               style={[s.photoBox, { backgroundColor: colors.surface2, borderColor: completePhoto ? colors.success : colors.border }]}
-              onPress={() => Alert.alert('Bilgi', 'Fotoğraf yükleme yakın zamanda eklenecek.')}>
-              <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Kanıt Fotoğrafı Ekle</Text>
+              onPress={() => pickPhoto(setCompletePhoto)}
+            >
+              {completePhoto ? (
+                <Image source={{ uri: completePhoto }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
+              ) : (
+                <>
+                  <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+                  <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 6 }}>Kanıt Fotoğrafı Ekle</Text>
+                </>
+              )}
             </TouchableOpacity>
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <TouchableOpacity
@@ -420,7 +470,9 @@ const s = StyleSheet.create({
   userMenu: { position: 'absolute', top: 56, right: 16, borderRadius: 12, borderWidth: 1, minWidth: 140, overflow: 'hidden' },
   menuItem: { paddingVertical: 12, paddingHorizontal: 14 },
   calendarWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  calMonth: { fontSize: 13, fontWeight: '700', marginBottom: 10 },
+  calHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  calArrow: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  calMonth: { fontSize: 13, fontWeight: '700' },
   weekRow: { flexDirection: 'row', gap: 4 },
   dayCell: { flex: 1, height: 62, borderRadius: 12, justifyContent: 'center', alignItems: 'center', gap: 3 },
   dayName: { fontSize: 9, fontWeight: '600' },
