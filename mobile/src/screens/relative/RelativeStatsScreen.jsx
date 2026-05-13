@@ -1,5 +1,5 @@
 ﻿import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../../context/AuthContext';
@@ -144,21 +144,48 @@ export default function RelativeStatsScreen({ navigation }) {
             {/* Sorun Trendi (son 4 hafta) */}
             {myStats.problem_trend && (
               <View style={[s.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                  <Ionicons name="trending-up" size={15} color={colors.error} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                  <View style={[s.chartIconWrap, { backgroundColor: colors.errorSoft }]}>
+                    <Ionicons name="trending-up" size={14} color={colors.error} />
+                  </View>
                   <Text style={[s.cardSectionTitle, { color: colors.textPrimary }]}>Sorun Trendi (Son 4 Hafta)</Text>
                 </View>
                 {(() => {
-                  const maxC = Math.max(...myStats.problem_trend.map(x => x.count), 1);
+                  const trend = myStats.problem_trend;
+                  const maxC = Math.max(...trend.map(x => x.count), 1);
+                  const BAR_MAX_H = 60;
                   return (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, height: 72 }}>
-                      {myStats.problem_trend.map((w, i) => {
-                        const barH = Math.max(4, Math.round((w.count / maxC) * 60));
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      {trend.map((w, i) => {
+                        const hasCount = w.count > 0;
+                        const barH = hasCount ? Math.max(10, Math.round((w.count / maxC) * BAR_MAX_H)) : 0;
                         return (
-                          <View key={i} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-                            <Text style={{ fontSize: 10, fontWeight: '700', color: w.count > 0 ? colors.error : colors.textMuted }}>{w.count}</Text>
-                            <View style={{ width: '100%', height: barH, backgroundColor: w.count > 0 ? colors.error + '88' : colors.surface2, borderTopLeftRadius: 4, borderTopRightRadius: 4 }} />
-                            <Text style={{ fontSize: 9, color: colors.textMuted }}>{`H${i + 1}`}</Text>
+                          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                            {/* Count label — sabit yükseklik, 0 ise şeffaf */}
+                            <Text style={{ fontSize: 13, fontWeight: '900', height: 20, lineHeight: 20,
+                              color: hasCount ? colors.error : 'transparent' }}>
+                              {w.count}
+                            </Text>
+                            {/* Bar area — sabit yükseklik, barlar aşağıdan büyür */}
+                            <View style={{ height: BAR_MAX_H, justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
+                              {hasCount ? (
+                                <View style={{ width: '65%', height: barH, borderRadius: 7, overflow: 'hidden',
+                                  backgroundColor: colors.error }}>
+                                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0,
+                                    height: Math.max(4, barH * 0.30),
+                                    backgroundColor: 'rgba(255,255,255,0.22)',
+                                    borderTopLeftRadius: 7, borderTopRightRadius: 7 }} />
+                                </View>
+                              ) : (
+                                <View style={{ width: '65%', height: 8, borderRadius: 4,
+                                  backgroundColor: colors.surface3, opacity: 0.5 }} />
+                              )}
+                            </View>
+                            {/* H etiketi — sabit alt */}
+                            <Text style={{ fontSize: 10, marginTop: 5, fontWeight: hasCount ? '700' : '400',
+                              color: hasCount ? colors.error : colors.border }}>
+                              {`H${i + 1}`}
+                            </Text>
                           </View>
                         );
                       })}
@@ -166,10 +193,10 @@ export default function RelativeStatsScreen({ navigation }) {
                   );
                 })()}
                 {myStats.ciddi_problems > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10,
-                    backgroundColor: 'rgba(248,113,113,0.1)', borderRadius: 8, padding: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14,
+                    backgroundColor: colors.errorSoft, borderRadius: 10, padding: 10 }}>
                     <Ionicons name="warning" size={14} color={colors.error} />
-                    <Text style={{ fontSize: 12, color: colors.error, fontWeight: '600' }}>
+                    <Text style={{ fontSize: 12, color: colors.error, fontWeight: '700' }}>
                       {myStats.ciddi_problems} ciddi sorun bildirildi
                     </Text>
                   </View>
@@ -194,112 +221,144 @@ export default function RelativeStatsScreen({ navigation }) {
           </View>
         ) : (
           <>
-            {/* Tüm bakıcılar özet listesi */}
+            {/* Bakıcı arama çubuğu */}
+            <View style={[s.searchWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Ionicons name="search-outline" size={16} color={colors.textMuted} />
+              <TextInput
+                style={[s.searchInput, { color: colors.textPrimary }]}
+                placeholder="Bakıcı adına göre ara…"
+                placeholderTextColor={colors.textMuted}
+                value={cgSearch}
+                onChangeText={setCgSearch}
+                returnKeyType="search"
+              />
+              {cgSearch.length > 0 && (
+                <TouchableOpacity onPress={() => { setCgSearch(''); setSelectedCaregiver(null); }}>
+                  <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Liste: sadece arama yapıldığında göster */}
+            {cgSearch.trim().length === 0 ? (
+              <View style={[s.searchPromptBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="person-search-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Yukarıdan bakıcı adı yazarak arama yapın</Text>
+              </View>
+            ) : filteredCaregivers.length === 0 ? (
+              <View style={[s.searchPromptBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Ionicons name="search-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Sonuç bulunamadı</Text>
+              </View>
+            ) : (
             <View style={[s.cgListCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {caregivers.map((c, i) => {
+              {filteredCaregivers.map((c, i) => {
                 const cs = caregiverStats[c.id];
                 const isSelected = selectedCaregiver?.id === c.id;
+                const rate = cs?.completion_rate ?? 0;
                 return (
+                  <View key={c.id}>
                   <TouchableOpacity
-                    key={c.id}
-                    style={[s.cgRow, i < caregivers.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border },
+                    style={[s.cgRow,
+                      i < filteredCaregivers.length - 1 && !isSelected && { borderBottomWidth: 0.5, borderBottomColor: colors.border },
                       isSelected && { backgroundColor: colors.primarySoft }]}
                     onPress={() => setSelectedCaregiver(isSelected ? null : c)}
                     activeOpacity={0.7}
                   >
-                    <View style={[s.avatar, { backgroundColor: isSelected ? colors.primary : colors.surface2 }]}>
-                      <Text style={[s.avatarTxt, { color: isSelected ? '#fff' : colors.textPrimary }]}>{getUserInitials(c.full_name)}</Text>
+                    <View style={[s.avatar, { backgroundColor: isSelected ? colors.primary : colors.primarySoft }]}>
+                      <Text style={[s.avatarTxt, { color: isSelected ? '#fff' : colors.primary }]}>{getUserInitials(c.full_name)}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.cgName, { color: isSelected ? colors.primary : colors.textPrimary }]}>{c.full_name}</Text>
-                      <Text style={{ fontSize: 11, color: colors.textMuted }}>Hasta Bakıcı</Text>
+                      <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>Hasta Bakıcı</Text>
                     </View>
                     {cs ? (
                       <View style={{ alignItems: 'flex-end', gap: 2 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                          <Ionicons name="star" size={12} color="#FFB347" />
-                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFB347' }}>
+                          <Ionicons name="star" size={12} color={colors.warning} />
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.warning }}>
                             {cs.avg_rating ? cs.avg_rating.toFixed(1) : '—'}
                           </Text>
                         </View>
                         <Text style={{ fontSize: 10, color: colors.textMuted }}>{cs.completed_tasks}/{cs.total_assigned} görev</Text>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>{cs.completion_rate}%</Text>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: rate >= 70 ? colors.success : colors.warning }}>{rate}%</Text>
                       </View>
                     ) : (
                       <ActivityIndicator size="small" color={colors.primary} />
                     )}
-                    <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                    <Ionicons name={isSelected ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
+
+                  {/* Inline detay – bakıcı satırının hemen altında */}
+                  {isSelected && (
+                    <View style={[s.inlineDetail, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
+                      {loadingStats ? (
+                        <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} />
+                      ) : selectedStats ? (
+                        <>
+                          {/* Haftalık performans mini chart */}
+                          {selectedStats.weekly_data && (
+                            <View style={{ marginBottom: 14, paddingBottom: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Haftalık Performans</Text>
+                              <View style={{ flexDirection: 'row', gap: 4 }}>
+                                {(selectedStats.weekly_data).map((d, i) => {
+                                  const maxR = Math.max(...selectedStats.weekly_data.map(x => x.rate), 1);
+                                  const barH = Math.max(4, Math.round((d.rate / maxR) * 44));
+                                  const isToday = i === (new Date().getDay() + 6) % 7;
+                                  const active = d.rate > 0;
+                                  return (
+                                    <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+                                      <View style={{ height: 44, justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
+                                        <View style={{ width: '72%', height: barH, borderRadius: 4,
+                                          backgroundColor: isToday ? colors.primary : (active ? colors.primarySoft : colors.surface3),
+                                          overflow: 'hidden' }}>
+                                          {isToday && <View style={{ position: 'absolute', top: 0, left: 0, right: 0,
+                                            height: '35%', backgroundColor: 'rgba(255,255,255,0.25)',
+                                            borderTopLeftRadius: 4, borderTopRightRadius: 4 }} />}
+                                        </View>
+                                      </View>
+                                      <Text style={{ fontSize: 8, color: isToday ? colors.primary : colors.textMuted,
+                                        marginTop: 3, fontWeight: isToday ? '800' : '400' }}>{DAYS[i]}</Text>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          )}
+                          {/* Özet satırları */}
+                          {[
+                            { label: 'Toplam Atanan Görev', value: selectedStats.total_assigned, color: colors.textPrimary },
+                            { label: 'Tamamlanan', value: selectedStats.completed_tasks, color: colors.success },
+                            { label: 'Tamamlanma Oranı', value: selectedStats.completion_rate + '%', color: colors.primary },
+                            { label: 'Ortalama Puan', value: selectedStats.avg_rating ? selectedStats.avg_rating.toFixed(1) + ' / 5.0' : 'Henüz yok', color: colors.warning },
+                            { label: 'Bildirilen Sorun', value: selectedStats.problems_reported ?? 0, color: colors.error },
+                            { label: 'Bugünkü Görev', value: selectedStats.tasks_today, color: colors.textPrimary },
+                          ].map((row, ri) => (
+                            <View key={ri} style={[s.inlineRow, { borderBottomColor: colors.border }]}>
+                              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{row.label}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: row.color }}>{row.value}</Text>
+                            </View>
+                          ))}
+                          {/* Performans bar */}
+                          <View style={{ marginTop: 10 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <Text style={{ fontSize: 11, color: colors.textMuted }}>Tamamlanma oranı</Text>
+                              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{selectedStats.completion_rate}%</Text>
+                            </View>
+                            <View style={{ height: 6, backgroundColor: colors.surface3, borderRadius: 3, overflow: 'hidden' }}>
+                              <View style={{ height: 6, width: `${Math.min(selectedStats.completion_rate, 100)}%`, backgroundColor: selectedStats.completion_rate >= 70 ? colors.success : colors.warning, borderRadius: 3 }} />
+                            </View>
+                          </View>
+                        </>
+                      ) : null}
+                    </View>
+                  )}
+                  </View>
                 );
               })}
             </View>
-
-            {/* Seçili bakıcı detay */}
-            {selectedCaregiver && (
-              <View style={{ marginTop: 12 }}>
-                <View style={[s.statsHeader, { borderColor: colors.primary }]}>
-                  <Text style={[s.statsHeaderTxt, { color: colors.primary }]}>{selectedCaregiver.full_name} — Detay</Text>
-                </View>
-
-                {loadingStats ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
-                ) : selectedStats ? (
-                  <>
-                    {/* Haftalık bar chart */}
-                    <View style={[s.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                        <Ionicons name="trending-up" size={15} color={colors.primary} />
-                        <Text style={[s.cardSectionTitle, { color: colors.textPrimary }]}>Haftalık Performans</Text>
-                      </View>
-                      {(() => {
-                        const wData = selectedStats.weekly_data || DAYS.map(() => ({ rate: 0 }));
-                        const maxR = Math.max(...wData.map(x => x.rate), 1);
-                        const todayDow = (new Date().getDay() + 6) % 7;
-                        return (
-                          <View style={s.barChart}>
-                            {wData.map((d, i) => {
-                              const barH = Math.max(4, Math.round((d.rate / maxR) * 78));
-                              const isToday = i === todayDow;
-                              return (
-                                <View key={i} style={s.barCol}>
-                                  <View style={[s.barFill, {
-                                    height: barH,
-                                    backgroundColor: isToday ? colors.primary : (d.rate > 0 ? colors.primarySoft : colors.surface2),
-                                    borderTopLeftRadius: 4, borderTopRightRadius: 4,
-                                  }]} />
-                                  <Text style={[s.barDay, { color: isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? '700' : '500' }]}>{DAYS[i]}</Text>
-                                </View>
-                              );
-                            })}
-                          </View>
-                        );
-                      })()}
-                    </View>
-
-                    {/* Özet tablo */}
-                    <View style={[s.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      {[
-                        { label: 'Toplam Atanan Görev', value: selectedStats.total_assigned, color: colors.textPrimary },
-                        { label: 'Tamamlanan Görev', value: selectedStats.completed_tasks, color: colors.success },
-                        { label: 'Tamamlanma Oranı', value: selectedStats.completion_rate + '%', color: colors.primary },
-                        { label: 'Ortalama Puan', value: selectedStats.avg_rating ? selectedStats.avg_rating.toFixed(1) + ' / 5.0' : 'Henüz yok', color: '#FFB347' },
-                        { label: 'Bildirilen Sorun', value: selectedStats.problems_reported ?? 0, color: colors.error },
-                        { label: 'Bugünkü Görev', value: selectedStats.tasks_today, color: colors.textPrimary },
-                      ].map((row, i) => (
-                        <View key={i} style={[s.summaryRow, { borderBottomColor: colors.border }]}>
-                          <Text style={[s.summaryLabel, { color: colors.textSecondary }]}>{row.label}</Text>
-                          <Text style={[s.summaryValue, { color: row.color }]}>{row.value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                ) : (
-                  <View style={[s.emptyBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <Text style={[s.emptyTxt, { color: colors.textSecondary }]}>Henüz istatistik yok</Text>
-                  </View>
-                )}
-              </View>
             )}
+
           </>
         )}
       </ScrollView>
@@ -345,4 +404,14 @@ const s = StyleSheet.create({
   summaryValue: { fontSize: 13, fontWeight: '700' },
   emptyBox: { borderRadius: 14, borderWidth: 1, padding: 28, alignItems: 'center', marginTop: 8 },
   emptyTxt: { fontSize: 14, fontWeight: '500' },
+  // Search
+  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10 },
+  searchInput: { flex: 1, fontSize: 13, paddingVertical: 0 },
+  searchPromptBox: { borderRadius: 14, borderWidth: 1, padding: 28, alignItems: 'center', marginBottom: 16 },
+  // Inline detail
+  inlineDetail: { borderTopWidth: 0.5, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 0.5 },
+  inlineRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7, borderBottomWidth: 0.5 },
+  // Chart
+  chartIconWrap: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  trendBar: { width: '72%', borderTopLeftRadius: 5, borderTopRightRadius: 5 },
 });

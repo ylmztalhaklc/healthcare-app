@@ -193,6 +193,34 @@ def caregiver_stats(user_id: int, db: Session = Depends(get_db)):
     }
 
 
+@router.get("/ciddi-alerts/{user_id}")
+def get_ciddi_alerts(user_id: int, db: Session = Depends(get_db)):
+    """Hasta yakınına ait CİDDİ sorun bildirimi olan tüm görevleri döner.
+    Frontend bu listeyi kullanıcıya bir kez göstermek için AsyncStorage ile takip eder.
+    Bu endpoint yeni bildirim OLUŞTURMAZ; yalnızca mevcut ciddi görevleri listeler.
+    """
+    tasks = db.query(TaskInstance).filter(
+        TaskInstance.created_by_id == user_id,
+        TaskInstance.problem_severity == 'ciddi',
+    ).order_by(TaskInstance.scheduled_for.desc()).all()
+
+    result = []
+    for t in tasks:
+        caregiver_name = "Bakıcı"
+        if t.assigned_to_id:
+            cg = db.query(User).filter(User.id == t.assigned_to_id).first()
+            if cg:
+                caregiver_name = cg.full_name
+        result.append({
+            "id": t.id,
+            "title": t.title,
+            "scheduled_for": t.scheduled_for.isoformat(),
+            "problem_message": t.problem_message or "",
+            "caregiver_name": caregiver_name,
+        })
+    return result
+
+
 @router.post("/{task_id}/photo")
 async def upload_task_photo(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
     task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()

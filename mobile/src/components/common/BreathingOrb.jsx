@@ -1,12 +1,10 @@
-/**
- * BreathingOrb — Nefes alan, pulse veren dekoratif filigran bileşeni.
- * Login, home ekranlarına arka plan derinliği katar.
- *
- * Kullanım:
- *   <BreathingOrb color={colors.primary} size={320} style={{ top: -80, right: -80 }} />
+﻿/**
+ * BreathingOrb — smooth ping-pong nefes animasyonu.
+ * Callback zinciri: Animated.loop/sequence kullanmaz,
+ * dolayısıyla Android loop-boundary stutter sorunu olmaz.
  */
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useMemo } from 'react';
+import { Animated, Easing, View } from 'react-native';
 
 export default function BreathingOrb({
   color = '#00C9A7',
@@ -15,25 +13,46 @@ export default function BreathingOrb({
   style,
   opacity = 0.18,
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const fade  = useRef(new Animated.Value(opacity * 0.6)).current;
+  // Wall-clock phase → ilk frame doğru fazda başlar, mount sıçraması olmaz
+  const initPhase = useMemo(() => {
+    const cycle = duration * 2;
+    const e = Date.now() % cycle;
+    return e < duration ? e / duration : 1 - (e - duration) / duration;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const anim    = useRef(new Animated.Value(initPhase)).current;
+  const stopped = useRef(false);
 
   useEffect(() => {
-    const breathe = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(scale, { toValue: 1.18, duration, useNativeDriver: true, easing: t => Math.sin(t * Math.PI / 2) }),
-          Animated.timing(fade,  { toValue: opacity, duration, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(scale, { toValue: 1, duration, useNativeDriver: true, easing: t => 1 - Math.cos(t * Math.PI / 2) }),
-          Animated.timing(fade,  { toValue: opacity * 0.5, duration, useNativeDriver: true }),
-        ]),
-      ])
-    );
-    breathe.start();
-    return () => breathe.stop();
-  }, [duration, opacity]);
+    stopped.current = false;
+
+    const cycle    = duration * 2;
+    const e        = Date.now() % cycle;
+    const expanding = e < duration;
+    // Kalan süre: mevcut yarım döngüyü tamamlamak için
+    const remaining = Math.max(30, expanding ? duration - e : cycle - e);
+
+    // Her timing kendi callback'inde bir sonrakini başlatır → seamless ping-pong
+    const step = (toValue, dur) => {
+      Animated.timing(anim, {
+        toValue,
+        duration: dur,
+        useNativeDriver: true,
+        easing: Easing.inOut(Easing.sin),
+      }).start(({ finished }) => {
+        if (finished && !stopped.current) {
+          step(toValue === 1 ? 0 : 1, duration);
+        }
+      });
+    };
+
+    step(expanding ? 1 : 0, remaining);
+
+    return () => { stopped.current = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scaleAnim   = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] });
+  const opacityAnim = anim.interpolate({ inputRange: [0, 1], outputRange: [opacity * 0.28, opacity] });
 
   return (
     <Animated.View
@@ -45,8 +64,8 @@ export default function BreathingOrb({
           height: size,
           borderRadius: size / 2,
           backgroundColor: color,
-          transform: [{ scale }],
-          opacity: fade,
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
         },
         style,
       ]}
@@ -54,24 +73,15 @@ export default function BreathingOrb({
   );
 }
 
-/**
- * HealthWatermark — Sağlık ikonları filigranı.
- * Arka plana EKG çizgisi veya artı sembolü ekler.
- */
 export function PlusWatermark({ color = '#00C9A7', size = 60, style }) {
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', opacity: 0.055 }, style]}>
-      {/* Dikey çubuk */}
       <View style={{ position: 'absolute', width: size * 0.2, height: size, borderRadius: 4, backgroundColor: color, left: size * 0.4 }} />
-      {/* Yatay çubuk */}
       <View style={{ position: 'absolute', width: size, height: size * 0.2, borderRadius: 4, backgroundColor: color, top: size * 0.4 }} />
     </View>
   );
 }
 
-/**
- * EkgLine — EKG / kalp atışı filigranı (soyut çizgiler).
- */
 export function EkgWatermark({ color = '#00C9A7', style }) {
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', opacity: 0.07, flexDirection: 'row', alignItems: 'center', gap: 3 }, style]}>

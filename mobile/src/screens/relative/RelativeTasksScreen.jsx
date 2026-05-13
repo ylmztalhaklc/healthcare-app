@@ -1,7 +1,9 @@
-﻿import React, { useState, useEffect, useContext } from 'react';
+﻿import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { tasksAPI, usersAPI } from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -117,6 +119,31 @@ export default function RelativeTasksScreen({ navigation }) {
 
   // Unread notification count
   const { unreadCount } = useUnreadCount(user?.id);
+
+  // Ciddi sorun popup (one-time per task)
+  const [showCiddiPopup, setShowCiddiPopup] = useState(false);
+  const [ciddiPopupTasks, setCiddiPopupTasks] = useState([]);
+
+  useFocusEffect(useCallback(() => {
+    if (!user?.id) return;
+    (async () => {
+      try {
+        const res = await tasksAPI.getCiddiAlerts(user.id);
+        const alerts = Array.isArray(res.data) ? res.data : [];
+        if (alerts.length === 0) return;
+        const storageKey = `ciddi_seen_${user.id}`;
+        const raw = await AsyncStorage.getItem(storageKey);
+        const seen = raw ? JSON.parse(raw) : [];
+        const newAlerts = alerts.filter(a => !seen.includes(a.id));
+        if (newAlerts.length > 0) {
+          setCiddiPopupTasks(newAlerts);
+          setShowCiddiPopup(true);
+          const updated = [...seen, ...newAlerts.map(a => a.id)];
+          await AsyncStorage.setItem(storageKey, JSON.stringify(updated));
+        }
+      } catch (_) {}
+    })();
+  }, [user?.id]));
 
   // Time picker
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -382,6 +409,49 @@ export default function RelativeTasksScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Ciddi Sorun Popup — sadece bir kere gösterilir */}
+      <Modal transparent animationType="fade" visible={showCiddiPopup} onRequestClose={() => setShowCiddiPopup(false)}>
+        <View style={s.ciddiOverlay}>
+          <View style={[s.ciddiBox, { backgroundColor: colors.surface, borderColor: '#FF6B6B' }]}>
+            {/* Başlık */}
+            <View style={s.ciddiHeader}>
+              <View style={s.ciddiIconWrap}>
+                <Ionicons name="warning" size={26} color="#FF6B6B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.ciddiTitle, { color: '#FF6B6B' }]}>⚠️ Ciddi Sorun Bildirimi</Text>
+                <Text style={[s.ciddiSub, { color: colors.textSecondary }]}>Bakıcınız aşağıdaki görevde ciddi sorun bildirdi</Text>
+              </View>
+            </View>
+
+            {/* Görev listesi */}
+            <ScrollView style={{ maxHeight: 260 }} showsVerticalScrollIndicator={false}>
+              {ciddiPopupTasks.map((task) => (
+                <View key={task.id} style={[s.ciddiTaskCard, { backgroundColor: colors.surface2, borderColor: 'rgba(255,107,107,0.25)' }]}>
+                  <Text style={[s.ciddiTaskTitle, { color: colors.textPrimary }]}>{task.title}</Text>
+                  <Text style={[s.ciddiTaskMeta, { color: colors.textSecondary }]}>
+                    👤 {task.caregiver_name}  ·  📅 {new Date(task.scheduled_for).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </Text>
+                  {task.problem_message ? (
+                    <Text style={[s.ciddiTaskMsg, { color: colors.error || '#FF6B6B' }]} numberOfLines={3}>
+                      "{task.problem_message}"
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Kapat */}
+            <TouchableOpacity
+              style={[s.ciddiBtn, { backgroundColor: '#FF6B6B' }]}
+              onPress={() => setShowCiddiPopup(false)}
+            >
+              <Text style={s.ciddiBtnTxt}>Anladım</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       {/* Calendar Strip */}
@@ -945,4 +1015,18 @@ const s = StyleSheet.create({
   smallBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
   problemBox: { borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 12 },
   deleteConfirmBox: { borderWidth: 1.5, borderRadius: 12, padding: 14, marginBottom: 12 },
+
+  // ── Ciddi sorun popup ──────────────────────────────────────
+  ciddiOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 },
+  ciddiBox: { width: '100%', borderRadius: 20, borderWidth: 2, padding: 20, maxWidth: 380 },
+  ciddiHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 },
+  ciddiIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,107,107,0.15)', justifyContent: 'center', alignItems: 'center' },
+  ciddiTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  ciddiSub: { fontSize: 12, lineHeight: 16 },
+  ciddiTaskCard: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8 },
+  ciddiTaskTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
+  ciddiTaskMeta: { fontSize: 11, marginBottom: 4 },
+  ciddiTaskMsg: { fontSize: 12, fontStyle: 'italic', lineHeight: 16 },
+  ciddiBtn: { borderRadius: 12, paddingVertical: 13, alignItems: 'center', marginTop: 8 },
+  ciddiBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

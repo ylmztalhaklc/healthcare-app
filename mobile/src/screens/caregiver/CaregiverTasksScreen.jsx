@@ -250,7 +250,7 @@ export default function CaregiverTasksScreen({ navigation }) {
             )}
           </TouchableOpacity>
           <TouchableOpacity style={[s.iconBtn, { backgroundColor: colors.surface2, borderColor: colors.border }]} onPress={() => setShowUserMenu(true)}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials()}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>{getUserInitials(user?.full_name, 'HB')}</Text>
           </TouchableOpacity>
         </View>
       </View>

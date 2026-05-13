@@ -56,6 +56,7 @@ export const tasksAPI = {
   deleteTemplate: templateId => api.delete(`/tasks/template/${templateId}`),
   getRelativeStats: userId => api.get(`/tasks/stats/relative/${userId}`),
   getCaregiverStats: userId => api.get(`/tasks/stats/caregiver/${userId}`),
+  getCiddiAlerts: userId => api.get(`/tasks/ciddi-alerts/${userId}`),
   uploadTaskPhoto: async (taskId, photoUri) => {
     const filename = photoUri.split('/').pop() || `photo_${taskId}.jpg`;
     const ext = filename.split('.').pop().toLowerCase();
