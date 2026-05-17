@@ -189,11 +189,11 @@ export default function RelativeTasksScreen({ navigation }) {
   };
 
   const handleRate = async () => {
-    if (!rating) return Alert.alert('Hata', 'Lutfen bir puan secin.');
+    if (!rating) return Alert.alert('Hata', 'Lütfen bir puan seçin.');
     setRatingLoading(true);
     try {
       await tasksAPI.rateTask({ task_id: selectedTask.id, rating, review_note: '' });
-      Alert.alert('Basarili', 'Puaniniz kaydedildi.');
+      Alert.alert('Başarılı', 'Puanınız kaydedildi.');
       setShowDetailModal(false);
       fetchTasks();
     } catch { Alert.alert('Hata', 'Puan verilemedi.'); }
@@ -812,14 +812,14 @@ export default function RelativeTasksScreen({ navigation }) {
               {showDeleteConfirm && (
                 <View style={[s.deleteConfirmBox, { backgroundColor: 'rgba(255,107,107,0.1)', borderColor: colors.error }]}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.error, marginBottom: 12 }}>
-                    Bu gorevi silmek istediginizden emin misiniz?
+                    Bu görevi silmek istediğinizden emin misiniz?
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity
                       style={[s.modalBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]}
                       onPress={() => setShowDeleteConfirm(false)}
                     >
-                      <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>Vazgec</Text>
+                      <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>Vazgeç</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[s.modalBtn, { backgroundColor: colors.error, opacity: deleteLoading ? 0.7 : 1 }]}
@@ -834,19 +834,19 @@ export default function RelativeTasksScreen({ navigation }) {
 
               {editMode ? (
                 <>
-                  <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>BASLIK</Text>
+                  <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>BAŞLIK</Text>
                   <TextInput
                     style={[s.input, { backgroundColor: colors.surface2, borderColor: colors.border, color: colors.textPrimary }]}
                     value={editTitle} onChangeText={setEditTitle}
                   />
-                  <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>ACIKLAMA</Text>
+                  <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>AÇIKLAMA</Text>
                   <TextInput
                     style={[s.input, s.inputMulti, { backgroundColor: colors.surface2, borderColor: colors.border, color: colors.textPrimary }]}
                     value={editDesc} onChangeText={setEditDesc} multiline
                   />
                   <View style={s.modalFooter}>
                     <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.border }]} onPress={() => setEditMode(false)}>
-                      <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>Vazgec</Text>
+                      <Text style={[s.modalBtnTxt, { color: colors.textSecondary }]}>Vazgeç</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[s.modalBtn, { backgroundColor: colors.primary, opacity: editLoading ? 0.7 : 1 }]} onPress={handleEditSave} disabled={editLoading}>
                       <Text style={[s.modalBtnTxt, { color: '#fff' }]}>Kaydet</Text>
@@ -905,6 +905,17 @@ export default function RelativeTasksScreen({ navigation }) {
                     </View>
                   )}
 
+                  {selectedTask?.problem_photo_url && (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={[s.fieldLabel, { color: colors.error }]}>SORUN FOTOĞRAFI</Text>
+                      <Image
+                        source={{ uri: `${API_BASE_URL}${selectedTask.problem_photo_url}` }}
+                        style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  )}
+
                   {selectedTask?.completion_photo_url && (
                     <View style={{ marginBottom: 12 }}>
                       <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>TAMAMLAMA FOTOĞRAFI</Text>
@@ -930,7 +941,7 @@ export default function RelativeTasksScreen({ navigation }) {
                         style={[s.rateBtn, { backgroundColor: colors.primary, opacity: ratingLoading ? 0.7 : 1 }]}
                         onPress={handleRate} disabled={ratingLoading}
                       >
-                        <Text style={s.rateBtnTxt}>Puani Kaydet</Text>
+                        <Text style={s.rateBtnTxt}>Puanı Kaydet</Text>
                       </TouchableOpacity>
                     </>
                   )}

@@ -65,7 +65,7 @@ export default function ChatScreen({ route, navigation }) {
                 text: 'Galeri', onPress: async () => {
                     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
                     if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Galeri erişimi gerekiyor.'); return; }
-                    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.7 });
+                    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.7 });
                     if (!r.canceled) _uploadPhoto(r.assets[0].uri);
                 },
             },
@@ -101,16 +101,21 @@ export default function ChatScreen({ route, navigation }) {
         try {
             await messagesAPI.editMessage({ message_id: editingId, new_content: editText.trim() });
             setMessages(prev => prev.map(m => m.id === editingId ? { ...m, content: editText.trim(), is_edited: true } : m));
-        } catch { console.warn('Mesaj düzenlenemedi'); }
-        finally { setEditingId(null); setEditText(''); }
+        } catch (e) {
+            console.warn('Mesaj düzenlenemedi', e?.response?.data || e?.message);
+            Alert.alert('Hata', 'Mesaj düzenlenemedi.');
+        } finally { setEditingId(null); setEditText(''); }
     };
 
     const handleDelete = async (msgId) => {
+        setMenuMsg(null);
         try {
             await messagesAPI.deleteMessage(msgId);
             setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: 'Bu mesaj silindi.', is_deleted: true } : m));
-        } catch { console.warn('Mesaj silinemedi'); }
-        setMenuMsg(null);
+        } catch (e) {
+            console.warn('Mesaj silinemedi', e?.response?.data || e?.message);
+            Alert.alert('Hata', 'Mesaj silinemedi.');
+        }
     };
 
     const renderItem = ({ item }) => {
@@ -118,7 +123,8 @@ export default function ChatScreen({ route, navigation }) {
         const isDeleted = item.is_deleted;
         const isEditing = editingId === item.id;
         const attachment = item.attachments && item.attachments.length > 0 ? item.attachments[0] : null;
-        const isPhotoMsg = attachment && attachment.file_type === 'image';
+        // Silinmiş veya düzenleme modundaysa fotoğraf olarak davranma
+        const isPhotoMsg = !isDeleted && !isEditing && attachment && attachment.file_type === 'image';
 
         return (
             <TouchableOpacity
@@ -128,8 +134,9 @@ export default function ChatScreen({ route, navigation }) {
                 <View style={[
                     styles.msgContainer,
                     isMe ? styles.myMsg : styles.theirMsg,
-                    isPhotoMsg ? { padding: 4, backgroundColor: 'transparent' } :
-                        { backgroundColor: isMe ? colors.primary : colors.surface2, opacity: isDeleted ? 0.55 : 1 }
+                    isPhotoMsg
+                        ? { padding: 4, backgroundColor: 'transparent' }
+                        : { backgroundColor: isMe ? colors.primary : colors.surface2, opacity: isDeleted ? 0.55 : 1 },
                 ]}>
                     {isPhotoMsg ? (
                         <View>

@@ -51,6 +51,7 @@ class TaskInstance(Base):
     problem_severity     = Column(String, nullable=True)  # hafif | orta | ciddi
     resolution_note      = Column(Text, nullable=True)
     completion_photo_url = Column(String, nullable=True)
+    problem_photo_url    = Column(String, nullable=True)
 
     rating               = Column(Float, nullable=True)   # 1.0 - 5.0
     review_note          = Column(Text, nullable=True)

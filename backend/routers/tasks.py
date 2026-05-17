@@ -222,18 +222,22 @@ def get_ciddi_alerts(user_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{task_id}/photo")
-async def upload_task_photo(task_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_task_photo(task_id: int, photo_type: str = "completion", file: UploadFile = File(...), db: Session = Depends(get_db)):
     task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Görev bulunamadı.")
     ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
-    filename = f"task_{task_id}_{int(datetime.utcnow().timestamp())}{ext}"
+    filename = f"task_{task_id}_{photo_type}_{int(datetime.utcnow().timestamp())}{ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:
         shutil.copyfileobj(file.file, f)
-    task.completion_photo_url = f"/uploads/{filename}"
+    url = f"/uploads/{filename}"
+    if photo_type == "problem":
+        task.problem_photo_url = url
+    else:
+        task.completion_photo_url = url
     db.commit()
-    return {"url": f"/uploads/{filename}"}
+    return {"url": url}
 
 
 @router.patch("/template/{template_id}", response_model=TaskInstanceOut)

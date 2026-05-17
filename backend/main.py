@@ -33,6 +33,14 @@ def startup():
     migrations = [
         "ALTER TABLE notifications ADD COLUMN title TEXT",
         "ALTER TABLE notifications ADD COLUMN related_user_name TEXT",
+        # Message soft-edit/delete kolonları
+        "ALTER TABLE messages ADD COLUMN is_edited BOOLEAN DEFAULT 0",
+        "ALTER TABLE messages ADD COLUMN is_deleted BOOLEAN DEFAULT 0",
+        # Task fotoğraf ve şiddet kolonları
+        "ALTER TABLE task_instances ADD COLUMN completion_photo_url TEXT",
+        "ALTER TABLE task_instances ADD COLUMN problem_photo_url TEXT",
+        "ALTER TABLE task_instances ADD COLUMN problem_severity TEXT",
+        "ALTER TABLE task_instances ADD COLUMN resolution_note TEXT",
     ]
     with engine.connect() as conn:
         for sql in migrations:

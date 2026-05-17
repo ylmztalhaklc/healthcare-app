@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { API_BASE_URL } from '../constants/config';
 
 const api = axios.create({
@@ -42,6 +43,28 @@ export const authAPI = {
 };
 
 // ─── TASKS ────────────────────────────────────────────────────
+
+// Platform-aware FormData builder
+// Web: fetch URI → Blob → File object
+// Native (Android/iOS): { uri, name, type } object
+async function buildFormData(fieldName, uri, id) {
+  const formData = new FormData();
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const ext = (uri.split('.').pop() || 'jpg').split('?')[0].toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    const file = new File([blob], `${fieldName}_${id}.${ext}`, { type: mimeType });
+    formData.append(fieldName, file);
+  } else {
+    const filename = uri.split('/').pop() || `${fieldName}_${id}.jpg`;
+    const ext = filename.split('.').pop().toLowerCase();
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    formData.append(fieldName, { uri, name: filename, type: mimeType });
+  }
+  return formData;
+}
+
 export const tasksAPI = {
   createTask: data => api.post('/tasks/', data),
   getRelativeTasks: (userId, date) =>
@@ -57,13 +80,9 @@ export const tasksAPI = {
   getRelativeStats: userId => api.get(`/tasks/stats/relative/${userId}`),
   getCaregiverStats: userId => api.get(`/tasks/stats/caregiver/${userId}`),
   getCiddiAlerts: userId => api.get(`/tasks/ciddi-alerts/${userId}`),
-  uploadTaskPhoto: async (taskId, photoUri) => {
-    const filename = photoUri.split('/').pop() || `photo_${taskId}.jpg`;
-    const ext = filename.split('.').pop().toLowerCase();
-    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-    const formData = new FormData();
-    formData.append('file', { uri: photoUri, name: filename, type: mimeType });
-    return api.post(`/tasks/${taskId}/photo`, formData, {
+  uploadTaskPhoto: async (taskId, photoUri, photoType = 'completion') => {
+    const formData = await buildFormData('file', photoUri, taskId);
+    return api.post(`/tasks/${taskId}/photo?photo_type=${photoType}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },

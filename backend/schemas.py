@@ -81,6 +81,7 @@ class TaskInstanceOut(BaseModel):
     problem_severity: Optional[str]
     resolution_note: Optional[str]
     completion_photo_url: Optional[str]
+    problem_photo_url: Optional[str] = None
     rating: Optional[float]
     review_note: Optional[str]
     created_by_id: int

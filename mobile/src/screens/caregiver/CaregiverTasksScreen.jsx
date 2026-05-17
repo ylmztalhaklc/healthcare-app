@@ -60,7 +60,7 @@ export default function CaregiverTasksScreen({ navigation }) {
         text: 'Galeri', onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
           if (status !== 'granted') { Alert.alert('İzin Gerekli', 'Galeri erişimi gerekiyor.'); return; }
-          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.7 });
+          const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.7 });
           if (!r.canceled) setter(r.assets[0].uri);
         },
       },
@@ -136,7 +136,7 @@ export default function CaregiverTasksScreen({ navigation }) {
         problem_severity: problemSeverity,
       });
       if (problemPhoto) {
-        await tasksAPI.uploadTaskPhoto(problemTaskId, problemPhoto).catch(() => {});
+        await tasksAPI.uploadTaskPhoto(problemTaskId, problemPhoto, 'problem').catch(() => {});
       }
       setShowProblemModal(false);
       fetchTasks();
