@@ -105,67 +105,67 @@ export const dark = {
 
 // ─── LIGHT THEME ──────────────────────────────────────────────
 export const light = {
-  // ── Backgrounds ───────────────────────────────────────────
-  background: '#ECF0F7',       // cool blue-gray canvas
-  surface:    '#FFFFFF',       // pure white cards
-  surface2:   '#F5F7FF',       // lavender-tinted panel
-  surface3:   '#E8EDF5',       // deeper section bg
-  card:       '#FFFFFF',
+  // ── Backgrounds — doğal keten/kağıt tonu ─────────────────
+  background: '#F7F3EE',       // doğal keten beyazı
+  surface:    '#FEFCF9',       // sıcak beyaz
+  surface2:   '#F0EBE2',       // krem panel
+  surface3:   '#E8E0D4',       // daha derin krem
+  card:       '#FEFCF9',
 
-  // ── Primary: Electric Cyan-Teal ───────────────────────────
-  primary:      '#00B8B0',     // vivid electric teal
-  primaryDark:  '#008E88',     // pressed
-  primaryLight: '#00D8CE',     // hover
-  secondary:    '#4ADFD6',     // secondary accent
-  primarySoft:  'rgba(0,184,176,0.13)',
-  primaryGlow:  'rgba(0,184,176,0.28)',
-  primaryGlow2: 'rgba(0,184,176,0.10)',
+  // ── Primary: Muted Teal ───────────────────────────────────
+  primary:      '#0D9E97',     // mat okyanus teal
+  primaryDark:  '#0A7A74',     // basılı
+  primaryLight: '#1ABDB5',     // hover
+  secondary:    '#35C4BB',     // yumuşak ikincil
+  primarySoft:  'rgba(13,158,151,0.09)',
+  primaryGlow:  'rgba(13,158,151,0.22)',
+  primaryGlow2: 'rgba(13,158,151,0.09)',
 
   // ── Accent ────────────────────────────────────────────────
-  accent:       '#5B4BF5',     // vivid indigo
-  accentPurple: '#8B5CF6',     // vivid violet
-  accentWarm:   '#FF7A00',     // vivid orange
+  accent:       '#6A5ACD',     // mat lavanta-indigo
+  accentPurple: '#8878E0',     // açık lavanta
+  accentWarm:   '#D97000',     // sıcak amber
 
   // ── Status ────────────────────────────────────────────────
-  success:     '#00A86B',      // vivid emerald
-  successSoft: 'rgba(0,168,107,0.12)',
-  warning:     '#FF8C00',      // vivid amber-orange
-  warningSoft: 'rgba(255,140,0,0.12)',
-  error:       '#E8003D',      // vivid cherry red
-  errorSoft:   'rgba(232,0,61,0.10)',
-  info:        '#0072E5',      // vivid royal blue
-  infoSoft:    'rgba(0,114,229,0.10)',
+  success:     '#1A8F68',      // mat zümrüt
+  successSoft: 'rgba(26,143,104,0.10)',
+  warning:     '#C97D00',      // mat amber
+  warningSoft: 'rgba(201,125,0,0.10)',
+  error:       '#C0003A',      // mat kırmızı
+  errorSoft:   'rgba(192,0,58,0.08)',
+  info:        '#1762B8',      // mat lacivert
+  infoSoft:    'rgba(23,98,184,0.09)',
 
   // ── Health semantics ──────────────────────────────────────
   ...health,
 
   // ── Text ──────────────────────────────────────────────────
-  textPrimary:   '#0F2137',    // deep navy
-  textSecondary: '#4A6080',    // medium slate
-  textMuted:     '#8899AA',    // slate-gray
-  textTertiary:  '#B0BEC8',
+  textPrimary:   '#1C2B38',    // derin lacivert-gri
+  textSecondary: '#4A5C6E',    // orta slate
+  textMuted:     '#8A9AAA',    // hafif slate
+  textTertiary:  '#B0BCC6',
   textInverse:   '#FFFFFF',
 
   // ── Border / Divider ──────────────────────────────────────
-  border:      'rgba(0,0,0,0.08)',
-  borderFocus: 'rgba(0,184,176,0.55)',
-  divider:     'rgba(0,0,0,0.05)',
+  border:      'rgba(120,95,60,0.12)',
+  borderFocus: 'rgba(13,158,151,0.40)',
+  divider:     'rgba(120,95,60,0.06)',
 
   // ── Shadow tint ───────────────────────────────────────────
-  shadowTint:  '#00B8B0',
+  shadowTint:  '#0D9E97',
 
   // ── Task & Görev renkleri ─────────────────────────────────
-  statusPending:  '#FF8C00',
-  statusActive:   '#00B8B0',
-  statusDone:     '#00A86B',
-  statusProblem:  '#E8003D',
+  statusPending:  '#C97D00',
+  statusActive:   '#0D9E97',
+  statusDone:     '#1A8F68',
+  statusProblem:  '#C0003A',
 
   // ── Severity ──────────────────────────────────────────────
-  severityLow:    '#00A86B',
-  severityMedium: '#FF8C00',
-  severityHigh:   '#E8003D',
+  severityLow:    '#1A8F68',
+  severityMedium: '#C97D00',
+  severityHigh:   '#C0003A',
 
   // ── Filigran / Watermark renkleri ─────────────────────────
-  watermark:  'rgba(0,184,176,0.07)',
-  watermark2: 'rgba(91,75,245,0.05)',
+  watermark:  'rgba(13,158,151,0.06)',
+  watermark2: 'rgba(106,90,205,0.04)',
 };

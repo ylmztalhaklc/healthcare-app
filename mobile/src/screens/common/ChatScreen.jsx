@@ -8,6 +8,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { messagesAPI } from '../../services/api';
 import { API_BASE_URL } from '../../constants/config';
+import PhotoViewer from '../../components/common/PhotoViewer';
 
 export default function ChatScreen({ route, navigation }) {
     const { contactId, contactName } = route.params;
@@ -23,6 +24,8 @@ export default function ChatScreen({ route, navigation }) {
     const [menuMsg, setMenuMsg] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [editText, setEditText] = useState('');
+    // Photo viewer
+    const [photoViewerUri, setPhotoViewerUri] = useState(null);
 
     const fetchMessages = useCallback(async () => {
         try {
@@ -140,11 +143,16 @@ export default function ChatScreen({ route, navigation }) {
                 ]}>
                     {isPhotoMsg ? (
                         <View>
-                            <Image
-                                source={{ uri: `${API_BASE_URL}${attachment.file_path}` }}
-                                style={{ width: 200, height: 200, borderRadius: 12 }}
-                                resizeMode="cover"
-                            />
+                            <TouchableOpacity
+                                onPress={() => setPhotoViewerUri(`${API_BASE_URL}${attachment.file_path}`)}
+                                activeOpacity={0.9}
+                            >
+                                <Image
+                                    source={{ uri: `${API_BASE_URL}${attachment.file_path}` }}
+                                    style={{ width: 200, height: 200, borderRadius: 12 }}
+                                    resizeMode="cover"
+                                />
+                            </TouchableOpacity>
                             <Text style={{ fontSize: 9, color: colors.textMuted, marginTop: 2, textAlign: isMe ? 'right' : 'left' }}>
                                 {new Date(item.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Text>
@@ -189,6 +197,11 @@ export default function ChatScreen({ route, navigation }) {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <PhotoViewer
+                visible={!!photoViewerUri}
+                uri={photoViewerUri}
+                onClose={() => setPhotoViewerUri(null)}
+            />
             <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Ionicons name="arrow-back" size={24} color={colors.primary} />
@@ -281,7 +294,7 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
     backBtn: { paddingRight: 16 },
     headerTitle: { fontSize: 18, fontWeight: 'bold' },
-    msgContainer: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 12 },
+    msgContainer: { maxWidth: '80%', padding: 12, borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
     myMsg: { alignSelf: 'flex-end', borderBottomRightRadius: 4 },
     theirMsg: { alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
     msgTime: { fontSize: 10, alignSelf: 'flex-end' },

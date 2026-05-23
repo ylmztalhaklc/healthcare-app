@@ -10,6 +10,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { DAYS_SUN_FIRST, MONTHS_TR, API_BASE_URL } from '../../constants/config';
 import { useUnreadCount } from '../../hooks/useUnreadCount';
 import BreathingOrb from '../../components/common/BreathingOrb';
+import PhotoViewer from '../../components/common/PhotoViewer';
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 const CLOCK_SIZE = 260;
@@ -93,6 +94,8 @@ export default function RelativeTasksScreen({ navigation }) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
+  // Photo viewer
+  const [photoViewerUri, setPhotoViewerUri] = useState(null);
 
   // Edit mode
   const [editMode, setEditMode] = useState(false);
@@ -375,6 +378,11 @@ export default function RelativeTasksScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: colors.background }]}>
+      <PhotoViewer
+        visible={!!photoViewerUri}
+        uri={photoViewerUri}
+        onClose={() => setPhotoViewerUri(null)}
+      />
       {/* Header */}
       <View style={[s.header, { backgroundColor: colors.surface, borderBottomColor: colors.border, overflow: 'hidden' }]}>
         <BreathingOrb color={colors.primary} size={180} duration={4700} opacity={0.10} style={{ top: -70, right: -50 }} />
@@ -908,22 +916,32 @@ export default function RelativeTasksScreen({ navigation }) {
                   {selectedTask?.problem_photo_url && (
                     <View style={{ marginBottom: 12 }}>
                       <Text style={[s.fieldLabel, { color: colors.error }]}>SORUN FOTOĞRAFI</Text>
-                      <Image
-                        source={{ uri: `${API_BASE_URL}${selectedTask.problem_photo_url}` }}
-                        style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
-                        resizeMode="cover"
-                      />
+                      <TouchableOpacity
+                        onPress={() => setPhotoViewerUri(`${API_BASE_URL}${selectedTask.problem_photo_url}`)}
+                        activeOpacity={0.9}
+                      >
+                        <Image
+                          source={{ uri: `${API_BASE_URL}${selectedTask.problem_photo_url}` }}
+                          style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
                     </View>
                   )}
 
                   {selectedTask?.completion_photo_url && (
                     <View style={{ marginBottom: 12 }}>
                       <Text style={[s.fieldLabel, { color: colors.textSecondary }]}>TAMAMLAMA FOTOĞRAFI</Text>
-                      <Image
-                        source={{ uri: `${API_BASE_URL}${selectedTask.completion_photo_url}` }}
-                        style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
-                        resizeMode="cover"
-                      />
+                      <TouchableOpacity
+                        onPress={() => setPhotoViewerUri(`${API_BASE_URL}${selectedTask.completion_photo_url}`)}
+                        activeOpacity={0.9}
+                      >
+                        <Image
+                          source={{ uri: `${API_BASE_URL}${selectedTask.completion_photo_url}` }}
+                          style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 6 }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
                     </View>
                   )}
 

@@ -1,10 +1,15 @@
 ﻿/**
  * BreathingOrb — smooth ping-pong nefes animasyonu.
- * Callback zinciri: Animated.loop/sequence kullanmaz,
- * dolayısıyla Android loop-boundary stutter sorunu olmaz.
+ *
+ * scale + opacity → useNativeDriver: true (native thread, buttery smooth)
+ * backgroundColor → statik renk (animasyonsuz = driver çakışması yok)
+ *
+ * Animated.loop + Animated.sequence: döngü native thread'de kalır,
+ * JS round-trip olmaz → sıfır takılma.
  */
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function BreathingOrb({
   color = '#00C9A7',
@@ -13,46 +18,41 @@ export default function BreathingOrb({
   style,
   opacity = 0.18,
 }) {
-  // Wall-clock phase → ilk frame doğru fazda başlar, mount sıçraması olmaz
-  const initPhase = useMemo(() => {
-    const cycle = duration * 2;
-    const e = Date.now() % cycle;
-    return e < duration ? e / duration : 1 - (e - duration) / duration;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { isDark } = useTheme();
+  // Her iki modda da boost — dark modda üst sınır daha yüksek (neon renkler)
+  // Dark modda neon renk arka plana yüksek kontrast yaratır → max düşürülür
+  const effectiveOpacity = Math.min(opacity * 2.2, isDark ? 0.38 : 0.35);
+  // Dark modda min oranı yüksek → delta dar → geçiş daha az dramatik = daha smooth
+  const opacityMinRatio  = isDark ? 0.76 : 0.52;
+  // Dark modda scale daha küçük → neon kenarın hareketi daha az hissedilir
+  const scaleMax         = isDark ? 1.04 : 1.08;
 
-  const anim    = useRef(new Animated.Value(initPhase)).current;
-  const stopped = useRef(false);
+  const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    stopped.current = false;
-
-    const cycle    = duration * 2;
-    const e        = Date.now() % cycle;
-    const expanding = e < duration;
-    // Kalan süre: mevcut yarım döngüyü tamamlamak için
-    const remaining = Math.max(30, expanding ? duration - e : cycle - e);
-
-    // Her timing kendi callback'inde bir sonrakini başlatır → seamless ping-pong
-    const step = (toValue, dur) => {
-      Animated.timing(anim, {
-        toValue,
-        duration: dur,
-        useNativeDriver: true,
-        easing: Easing.inOut(Easing.sin),
-      }).start(({ finished }) => {
-        if (finished && !stopped.current) {
-          step(toValue === 1 ? 0 : 1, duration);
-        }
-      });
-    };
-
-    step(expanding ? 1 : 0, remaining);
-
-    return () => { stopped.current = true; };
+    // Animated.loop → tüm döngü native thread'de kalır, JS round-trip yok → sıfır takılma
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1,
+          duration,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(anim, {
+          toValue: 0,
+          duration,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const scaleAnim   = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] });
-  const opacityAnim = anim.interpolate({ inputRange: [0, 1], outputRange: [opacity * 0.28, opacity] });
+  const scaleAnim   = anim.interpolate({ inputRange: [0, 1], outputRange: [1, scaleMax] });
+  const opacityAnim = anim.interpolate({ inputRange: [0, 1], outputRange: [effectiveOpacity * opacityMinRatio, effectiveOpacity] });
 
   return (
     <Animated.View
@@ -73,6 +73,9 @@ export default function BreathingOrb({
   );
 }
 
+// ─── Dekoratif watermark bileşenleri ──────────────────────────
+
+/** Tıbbi artı (+) işareti watermark — orijinal tasarım */
 export function PlusWatermark({ color = '#00C9A7', size = 60, style }) {
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', opacity: 0.055 }, style]}>
@@ -82,6 +85,7 @@ export function PlusWatermark({ color = '#00C9A7', size = 60, style }) {
   );
 }
 
+/** EKG / kalp ritmi bar watermark — orijinal tasarım */
 export function EkgWatermark({ color = '#00C9A7', style }) {
   return (
     <View pointerEvents="none" style={[{ position: 'absolute', opacity: 0.07, flexDirection: 'row', alignItems: 'center', gap: 3 }, style]}>
@@ -91,3 +95,4 @@ export function EkgWatermark({ color = '#00C9A7', style }) {
     </View>
   );
 }
+

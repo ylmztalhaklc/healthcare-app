@@ -141,68 +141,6 @@ export default function RelativeStatsScreen({ navigation }) {
               ))}
             </View>
 
-            {/* Sorun Trendi (son 4 hafta) */}
-            {myStats.problem_trend && (
-              <View style={[s.chartCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-                  <View style={[s.chartIconWrap, { backgroundColor: colors.errorSoft }]}>
-                    <Ionicons name="trending-up" size={14} color={colors.error} />
-                  </View>
-                  <Text style={[s.cardSectionTitle, { color: colors.textPrimary }]}>Sorun Trendi (Son 4 Hafta)</Text>
-                </View>
-                {(() => {
-                  const trend = myStats.problem_trend;
-                  const maxC = Math.max(...trend.map(x => x.count), 1);
-                  const BAR_MAX_H = 60;
-                  return (
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                      {trend.map((w, i) => {
-                        const hasCount = w.count > 0;
-                        const barH = hasCount ? Math.max(10, Math.round((w.count / maxC) * BAR_MAX_H)) : 0;
-                        return (
-                          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
-                            {/* Count label — sabit yükseklik, 0 ise şeffaf */}
-                            <Text style={{ fontSize: 13, fontWeight: '900', height: 20, lineHeight: 20,
-                              color: hasCount ? colors.error : 'transparent' }}>
-                              {w.count}
-                            </Text>
-                            {/* Bar area — sabit yükseklik, barlar aşağıdan büyür */}
-                            <View style={{ height: BAR_MAX_H, justifyContent: 'flex-end', width: '100%', alignItems: 'center' }}>
-                              {hasCount ? (
-                                <View style={{ width: '65%', height: barH, borderRadius: 7, overflow: 'hidden',
-                                  backgroundColor: colors.error }}>
-                                  <View style={{ position: 'absolute', top: 0, left: 0, right: 0,
-                                    height: Math.max(4, barH * 0.30),
-                                    backgroundColor: 'rgba(255,255,255,0.22)',
-                                    borderTopLeftRadius: 7, borderTopRightRadius: 7 }} />
-                                </View>
-                              ) : (
-                                <View style={{ width: '65%', height: 8, borderRadius: 4,
-                                  backgroundColor: colors.surface3, opacity: 0.5 }} />
-                              )}
-                            </View>
-                            {/* H etiketi — sabit alt */}
-                            <Text style={{ fontSize: 10, marginTop: 5, fontWeight: hasCount ? '700' : '400',
-                              color: hasCount ? colors.error : colors.border }}>
-                              {`H${i + 1}`}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  );
-                })()}
-                {myStats.ciddi_problems > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14,
-                    backgroundColor: colors.errorSoft, borderRadius: 10, padding: 10 }}>
-                    <Ionicons name="warning" size={14} color={colors.error} />
-                    <Text style={{ fontSize: 12, color: colors.error, fontWeight: '700' }}>
-                      {myStats.ciddi_problems} ciddi sorun bildirildi
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </>
         ) : null}
 
@@ -242,7 +180,7 @@ export default function RelativeStatsScreen({ navigation }) {
             {/* Liste: sadece arama yapıldığında göster */}
             {cgSearch.trim().length === 0 ? (
               <View style={[s.searchPromptBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Ionicons name="person-search-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                <Ionicons name="people-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>Yukarıdan bakıcı adı yazarak arama yapın</Text>
               </View>
             ) : filteredCaregivers.length === 0 ? (

@@ -1,48 +1,116 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
-import { View, Text, Animated, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useRef, useContext, useCallback } from 'react';
+import {
+    View, Text, Animated, TouchableOpacity, StyleSheet, PanResponder,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationsAPI } from '../../services/api';
 
+const SWIPE_THRESHOLD = 60;  // |dx| bu değeri geçerse swipe ile kapat
+const AUTO_DISMISS_MS = 2500; // Her bildirim 2.5s görünür
+
 export default function NotificationToast() {
     const { user } = useContext(AuthContext);
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
-    const [banner, setBanner] = useState(null); // { title, message }
-    const translateY = useRef(new Animated.Value(-160)).current;
-    const lastMaxIdRef = useRef(null);
-    const timerRef = useRef(null);
+    // FIFO queue: [{ id, title, message }, ...]
+    const queueRef = useRef([]);
+    const [current, setCurrent] = useState(null);
     const isShowingRef = useRef(false);
+    const lastMaxIdRef = useRef(null);
 
-    const hideBanner = () => {
-        Animated.timing(translateY, {
-            toValue: -160,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => {
-            setBanner(null);
+    // Animasyon değerleri
+    const translateY = useRef(new Animated.Value(-160)).current;
+    const translateX = useRef(new Animated.Value(0)).current;
+    const timerRef = useRef(null);
+
+    // Bir sonraki bildirimi göster (queue'dan al)
+    const showNext = useCallback(() => {
+        if (queueRef.current.length === 0) {
             isShowingRef.current = false;
-        });
-    };
-
-    const showBanner = (notif) => {
-        setBanner({ title: notif.title || 'Bildirim', message: notif.message });
+            setCurrent(null);
+            return;
+        }
+        const next = queueRef.current.shift();
+        setCurrent(next);
         isShowingRef.current = true;
-        // Reset position before animating in (handles case where previous was dismissing)
+        translateX.setValue(0);
         translateY.setValue(-160);
+
+        // Yukarıdan aşağı slide-in
         Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
             speed: 14,
             bounciness: 4,
         }).start();
-        clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(hideBanner, 4500);
-    };
 
+        // Auto-dismiss
+        clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => dismissCurrent(0), AUTO_DISMISS_MS);
+    }, [translateY, translateX]);
+
+    // Kapatma: yön (dx) verilirse o yöne kayarak çıkar, aksi halde yukarı
+    const dismissCurrent = useCallback((dx = 0) => {
+        clearTimeout(timerRef.current);
+        const exitX = dx !== 0 ? (dx > 0 ? 400 : -400) : 0;
+        const exitY = dx !== 0 ? 0 : -160;
+
+        Animated.parallel([
+            Animated.timing(translateX, {
+                toValue: exitX,
+                duration: 250,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: exitY,
+                duration: 250,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            setCurrent(null);
+            isShowingRef.current = false;
+            // Kısa gecikme ile sıradakini göster
+            setTimeout(showNext, 150);
+        });
+    }, [translateX, translateY, showNext]);
+
+    // Bildirimleri kuyruğa ekle ve gerekirse gösterime başla
+    const enqueue = useCallback((notifs) => {
+        notifs.forEach(n => queueRef.current.push(n));
+        if (!isShowingRef.current) {
+            showNext();
+        }
+    }, [showNext]);
+
+    // PanResponder — sola/sağa swipe için
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy),
+            onPanResponderMove: (_, gs) => {
+                translateX.setValue(gs.dx);
+            },
+            onPanResponderRelease: (_, gs) => {
+                if (Math.abs(gs.dx) > SWIPE_THRESHOLD) {
+                    dismissCurrent(gs.dx);
+                } else {
+                    // Geri yerine getir
+                    Animated.spring(translateX, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                        speed: 18,
+                        bounciness: 6,
+                    }).start();
+                }
+            },
+        })
+    ).current;
+
+    // Bildirim polling
     useEffect(() => {
         if (!user?.id) return;
 
@@ -52,46 +120,44 @@ export default function NotificationToast() {
                 const arr = Array.isArray(res.data) ? res.data : [];
                 if (arr.length === 0) return;
 
-                // Backend returns sorted desc — arr[0] is newest
-                const maxId = arr[0].id;
+                const maxId = arr[0].id; // Backend desc sıralı — en yeni önce
 
                 if (lastMaxIdRef.current === null) {
-                    // First load — remember current state, don't show banner for existing notifications
                     lastMaxIdRef.current = maxId;
                     return;
                 }
 
                 if (maxId > lastMaxIdRef.current) {
-                    // New notifications arrived since last check
                     const newOnes = arr.filter(n => n.id > lastMaxIdRef.current && !n.is_read);
                     lastMaxIdRef.current = maxId;
                     if (newOnes.length > 0) {
-                        showBanner(newOnes[0]);
+                        // Eski → yeni sıralaması için ters çevir
+                        enqueue([...newOnes].reverse());
                     }
                 }
             } catch {}
         };
 
-        // Check immediately, then every 10 seconds
         check();
         const interval = setInterval(check, 10000);
         return () => {
             clearInterval(interval);
             clearTimeout(timerRef.current);
         };
-    }, [user?.id]);
+    }, [user?.id, enqueue]);
 
-    if (!banner) return null;
+    if (!current) return null;
 
     return (
         <Animated.View
+            {...panResponder.panHandlers}
             style={[
                 styles.banner,
                 {
                     backgroundColor: colors.surface,
                     paddingTop: (insets.top || 0) + 12,
                     borderBottomColor: colors.primary,
-                    transform: [{ translateY }],
+                    transform: [{ translateY }, { translateX }],
                 },
             ]}
         >
@@ -100,13 +166,13 @@ export default function NotificationToast() {
             </View>
             <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {banner.title}
+                    {current.title}
                 </Text>
                 <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {banner.message}
+                    {current.message}
                 </Text>
             </View>
-            <TouchableOpacity onPress={hideBanner} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => dismissCurrent(0)} style={styles.closeBtn}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
         </Animated.View>
@@ -152,3 +218,4 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
 });
+

@@ -249,7 +249,7 @@ export default function LoginScreen({ navigation }) {
               <View style={s.logo}>
                 <Text style={s.logoIcon}>+</Text>
               </View>
-              <Text style={s.logoText}>HealthCare RN</Text>
+              <Text style={s.logoText}>HealthCare</Text>
               <Text style={s.logoSub}>Hasta Bakım Yönetim Sistemi</Text>
             </View>
           </View>
