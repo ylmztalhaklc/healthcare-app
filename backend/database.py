@@ -70,6 +70,8 @@ class Notification(Base):
     title              = Column(String, nullable=True, default="Bildirim")
     message            = Column(Text, nullable=False)
     related_user_name  = Column(String, nullable=True)
+    type               = Column(String, nullable=True, default="general")
+    related_user_id    = Column(Integer, nullable=True)
     is_read            = Column(Boolean, default=False)
     created_at         = Column(DateTime, default=datetime.utcnow)
 

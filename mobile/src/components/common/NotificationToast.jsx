@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { notificationsAPI } from '../../services/api';
+import { navigationRef } from '../../navigation/navigationRef';
 
 const SWIPE_THRESHOLD = 60;  // |dx| bu değeri geçerse swipe ile kapat
 const AUTO_DISMISS_MS = 2500; // Her bildirim 2.5s görünür
@@ -148,6 +149,26 @@ export default function NotificationToast() {
 
     if (!current) return null;
 
+    const iconName = current.type === 'message' ? 'chatbubble-ellipses' : 'notifications-outline';
+
+    const handlePress = () => {
+        // Bildirimi okundu işaretle
+        notificationsAPI.markRead(current.id).catch(() => {});
+        dismissCurrent(0);
+        // İlgili ekrana yönlendir
+        if (!navigationRef.isReady()) return;
+        if (current.type === 'message' && current.related_user_id) {
+            navigationRef.navigate('ChatScreen', {
+                contactId: current.related_user_id,
+                contactName: current.title,
+            });
+        } else if (current.type === 'task') {
+            navigationRef.navigate('AppTabs', { screen: 'Tasks' });
+        } else {
+            navigationRef.navigate('Notifications');
+        }
+    };
+
     return (
         <Animated.View
             {...panResponder.panHandlers}
@@ -161,17 +182,23 @@ export default function NotificationToast() {
                 },
             ]}
         >
-            <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft || colors.surface2 }]}>
-                <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {current.title}
-                </Text>
-                <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
-                    {current.message}
-                </Text>
-            </View>
+            <TouchableOpacity
+                style={styles.pressArea}
+                onPress={handlePress}
+                activeOpacity={0.75}
+            >
+                <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft || colors.surface2 }]}>
+                    <Ionicons name={iconName} size={20} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {current.title}
+                    </Text>
+                    <Text style={[styles.message, { color: colors.textSecondary }]} numberOfLines={2}>
+                        {current.message}
+                    </Text>
+                </View>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => dismissCurrent(0)} style={styles.closeBtn}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
@@ -196,6 +223,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 12,
+    },
+    pressArea: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     iconWrap: {
         width: 38,

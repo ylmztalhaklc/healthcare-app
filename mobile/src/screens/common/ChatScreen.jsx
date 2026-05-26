@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { messagesAPI } from '../../services/api';
+import { messagesAPI, notificationsAPI } from '../../services/api';
 import { API_BASE_URL } from '../../constants/config';
 import PhotoViewer from '../../components/common/PhotoViewer';
 
@@ -41,6 +41,8 @@ export default function ChatScreen({ route, navigation }) {
     useFocusEffect(
         useCallback(() => {
             messagesAPI.markAllReadFrom(user.id, contactId).catch(() => {});
+            // Mesajlı konuşmayı açınca bilgisayar bildirimleri de okundu olsun
+            notificationsAPI.markReadBySender(user.id, contactId).catch(() => {});
             fetchMessages();
         }, [user?.id, contactId, fetchMessages])
     );

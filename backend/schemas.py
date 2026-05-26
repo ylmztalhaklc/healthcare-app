@@ -100,6 +100,8 @@ class NotificationOut(BaseModel):
     title: Optional[str] = "Bildirim"
     message: str
     related_user_name: Optional[str] = None
+    type: Optional[str] = "general"
+    related_user_id: Optional[int] = None
     is_read: bool
     created_at: datetime
 

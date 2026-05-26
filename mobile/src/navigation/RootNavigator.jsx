@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { navigationRef } from './navigationRef';
 import AuthStack from './AuthStack';
 import AppTabs from './AppTabs';
 import NotificationsScreen from '../screens/common/NotificationsScreen';
@@ -24,7 +25,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {user ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="AppTabs" component={AppTabs} />

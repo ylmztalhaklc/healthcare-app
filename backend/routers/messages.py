@@ -43,14 +43,16 @@ def send_message(body: MessageSend, db: Session = Depends(get_db)):
     sender = db.query(User).filter(User.id == body.sender_id).first()
     sender_name = sender.full_name if sender else "Biri"
     if body.content == '📷 Fotoğraf':
-        msg_preview = "📷 Fotoğraf gönderdi"
+        msg_preview = "Fotoğraf gönderdi"
     else:
         preview = body.content[:60].replace('\n', ' ')
         msg_preview = f"{preview}..." if len(body.content) > 60 else preview
     notif = Notification(
         user_id=body.receiver_id,
-        title=f"💬 {sender_name}",
+        title=sender_name,
         message=msg_preview,
+        type="message",
+        related_user_id=body.sender_id,
     )
     db.add(notif)
     db.commit()

@@ -120,9 +120,10 @@ export const messagesAPI = {
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────
 export const notificationsAPI = {
-  getAll: userId => api.get(`/notifications/${userId}`),
-  markRead: notifId => api.patch(`/notifications/read/${notifId}`),
-  markAllRead: userId => api.patch(`/notifications/read-all/${userId}`),
+  getAll:          userId               => api.get(`/notifications/${userId}`),
+  markRead:        notifId              => api.patch(`/notifications/read/${notifId}`),
+  markAllRead:     userId               => api.patch(`/notifications/read-all/${userId}`),
+  markReadBySender:(userId, senderId)   => api.patch(`/notifications/read-by-sender/${userId}/${senderId}`),
 };
 
 export default api;

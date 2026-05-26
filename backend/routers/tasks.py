@@ -52,6 +52,8 @@ def create_task(body: TaskInstanceCreate, db: Session = Depends(get_db)):
             title="Yeni Görev Atandı",
             message=f"{creator_name} tarafından size yeni bir görev atandı: {task.title}",
             related_user_name=creator_name,
+            type="task",
+            related_user_id=task.created_by_id,
         )
         db.add(notif)
         db.commit()
@@ -101,10 +103,11 @@ def update_task_status(body: TaskStatusUpdate, db: Session = Depends(get_db)):
         is_ciddi = body.problem_severity == 'ciddi'
         notif = Notification(
             user_id=task.created_by_id,
-            title="⚠️ CİDDİ SORUN BİLDİRİLDİ" if is_ciddi else "Görevde Sorun Bildirildi",
+            title="CİDDİ SORUN BİLDİRİLDİ" if is_ciddi else "Görevde Sorun Bildirildi",
             message=f"{caregiver_name} görevinizde CİDDİ sorun bildirdi: {task.title}" if is_ciddi
                     else f"{caregiver_name} görevinizde sorun bildirdi: {task.title}",
             related_user_name=caregiver_name,
+            type="task",
         )
         db.add(notif)
     if body.resolution_note:

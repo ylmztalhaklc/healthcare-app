@@ -41,6 +41,9 @@ def startup():
         "ALTER TABLE task_instances ADD COLUMN problem_photo_url TEXT",
         "ALTER TABLE task_instances ADD COLUMN problem_severity TEXT",
         "ALTER TABLE task_instances ADD COLUMN resolution_note TEXT",
+        # Bildirim tipi ve ilgili kullanıcı
+        "ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'general'",
+        "ALTER TABLE notifications ADD COLUMN related_user_id INTEGER",
     ]
     with engine.connect() as conn:
         for sql in migrations:
